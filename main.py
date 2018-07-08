@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from options import Options
-from model import Net, Net_LSTM
+from model import Net, Net_LSTM, Net_one
 from data import CustomDatasetDataLoader
 from solver import Solver
 import numpy as np
@@ -17,8 +17,8 @@ from visualizer import Visualizer
 def main():
     opt = Options().parse()
     visualizer = Visualizer(opt)
-    #average(opt,visualizer)
-    train_test(opt,visualizer)
+    average(opt,visualizer)
+    #train_test(opt,visualizer)
 
 def train_test(opt,visualizer):
     torch.manual_seed(opt.seed)
@@ -27,15 +27,24 @@ def train_test(opt,visualizer):
     torch.backends.cudnn.deterministic = True
     data_loader = CustomDatasetDataLoader()
     data_loader.initialize(opt)
+
+
+
     if opt.lstm:
         model = Net_LSTM(opt).to(opt.device)
+        print("LSTM model created")
+    elif opt.one_layer:
+        model = Net_one(opt).to(opt.device)
+        print("One layer model created")
     else:
         model = Net(opt).to(opt.device)
+        print("Two layer model created")
     best_model = copy.deepcopy(model)
     best_epoch = 0
     solver = Solver(model, data_loader, opt,visualizer)
     acc_past = 0
-    visualizer.set_filename(opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(opt.drop1)+"-"+ str(opt.drop2)+"seed"+str(opt.seed) + "subs" + str(opt.train_size))
+    #visualizer.set_filename(opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(opt.drop1)+"-"+ str(opt.drop2)+"seed"+str(opt.seed) + "subs" + str(opt.train_size))
+    visualizer.set_filename(opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(int(opt.drop1*100))+"-"+ str(int(opt.drop2*100)) + "subs" + str(opt.train_size)+"1_lay"+ str(opt.one_layer)+"seed"+str(opt.seed))
     visualizer.write_options()
     visualizer.write_network_structure()
     pytorch_total_params = sum(p.numel() for p in model.parameters())
@@ -47,7 +56,7 @@ def train_test(opt,visualizer):
 
     for epoch in range(1, opt.epochs + 1):
         train_losses.append(solver.train(epoch))
-        val_loss, val_acc = solver.val()
+        val_acc,val_loss = solver.val()
         val_losses.append(val_loss)
         if acc_past<val_acc:
             acc_past=val_acc
@@ -74,6 +83,7 @@ def average(opt,visualizer):
     best_epoch_v = []
 
     for seed in range(0, opt.seeds):
+        print("SEED no: ",seed)
         opt.seed = seed
         train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch = train_test(opt,visualizer)
         acc_best_v.append(acc_best)
@@ -98,7 +108,7 @@ def average(opt,visualizer):
     loss_last_std = np.std(np.array(loss_last_v))
     best_epoch_std = np.std(np.array(best_epoch_v))
 
-    visualizer.set_filename("AVERAGE"+opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(opt.drop1)+"-"+ str(opt.drop2) + "subs" + str(opt.train_size))
+    visualizer.set_filename("AVERAGE"+opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(int(opt.drop1*100))+"-"+ str(int(opt.drop2*100)) + "subs" + str(opt.train_size)+"1_lay"+ str(opt.one_layer))
     visualizer.write_options()
     #visualizer.write_num_parameters()
     visualizer.write_network_structure()
@@ -106,7 +116,7 @@ def average(opt,visualizer):
     visualizer.write_text("\nBest Model: acc: {:.4f} +- {:.4f}".format(acc_best_m, acc_best_std))
     visualizer.write_text("Last Model: acc: {:.4f} +- {:.4f}".format(acc_last_m, acc_last_std))
     visualizer.write_text("Best epoch: {:.2f}±{:.2f} \n".format(best_epoch_m, best_epoch_std))
-    visualizer.write_text("Last Model: loss: {:.4f} +- {:.4f}".format(loss_best_m, loss_best_std))
+    visualizer.write_text("Best Model: loss: {:.4f} +- {:.4f}".format(loss_best_m, loss_best_std))
     visualizer.write_text("Last Model: loss: {:.4f} +- {:.4f}".format(loss_last_m, loss_last_std))
     visualizer.flush_to_file()
 

@@ -13,6 +13,8 @@ class Options():
         self.parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train (default: 10)')
         self.parser.add_argument('--batch_size', type=int, default=64, help='input batch size')
         self.parser.add_argument('--seed', type=int, default=0, help='initial random seed for deterministic results')
+        self.parser.add_argument('--seeds', type=int, default=5, help='initial random seed for deterministic results')
+
         self.parser.add_argument('--lr', type=float, default=0.001, metavar='LR',help='learning rate (default: 0.01)')
         self.parser.add_argument('--momentum', type=float, default=0.5, metavar='M',help='SGD momentum (default: 0.5)')
         self.parser.add_argument('--val_size', type=int, default=10000,help='Validation datazet size')
@@ -24,6 +26,7 @@ class Options():
         self.parser.add_argument('--lstm', type=int, default=0, help='lstm')
         self.parser.add_argument('--drop1', type=float, default=0, help='dropout prob')
         self.parser.add_argument('--drop2', type=float, default=0.5, help='dropout prob')
+        self.parser.add_argument('--one_layer', type=int, default=0, help='onle layer only')
 
         self.parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
         self.parser.add_argument('--nThreads', default=8, type=int, help='# threads for loading data')

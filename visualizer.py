@@ -5,15 +5,19 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import visdom
+
 
 class Visualizer():
 
     def __init__(self,opt):
-
-        self.filename = opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(opt.drop1)+"-"+ str(opt.drop2)+"seed"+str(opt.seed) + "subs" + str(opt.train_size)
+        plt.use('Agg')
+        self.filename = ""
         print(time.strftime("%Y-%m-%d %H:%M"))
         self.text = time.strftime("%Y-%m-%d %H:%M")
         self.opt = opt
+        # self.vis = visdom.Visdom(port=opt.display_port)
+
         if not os.path.exists("results"):
             os.makedirs("results")
 
@@ -47,6 +51,9 @@ class Visualizer():
         for k, v in sorted(argx.items()):
             self.write_text('%s: %s' % (str(k), str(v)))
         self.write_text('-------------- End ----------------\n\n')
+    def write_num_parameters(self,model):
+        pytorch_total_params = sum(p.numel() for p in self.model.parameters())
+        self.write_text("Total Network parameters: " + str(pytorch_total_params))
 
     def write_test_resut(self, in_text):
         self.text+="sd"
@@ -64,4 +71,25 @@ class Visualizer():
     def flush_to_file(self):
         file = open("./results/"+self.filename+".txt", "w")
         file.write(self.text)
+        self.text=""
         file.close()
+
+    def set_filename(self,name):
+        self.filename = name
+
+
+    #
+    # def plot_current_errors(self, epoch, counter_ratio, opt, errors):
+    #     if not hasattr(self, 'plot_data'):
+    #         self.plot_data = {'X': [], 'Y': [], 'legend': list(errors.keys())}
+    #     self.plot_data['X'].append(epoch + counter_ratio)
+    #     self.plot_data['Y'].append([errors[k] for k in self.plot_data['legend']])
+    #     self.vis.line(
+    #         X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend']), 1),
+    #         Y=np.array(self.plot_data['Y']),
+    #         opts={
+    #             'title': self.name + ' loss over time',
+    #             'legend': self.plot_data['legend'],
+    #             'xlabel': 'epoch',
+    #             'ylabel': 'loss'},
+    #         win=self.display_id)

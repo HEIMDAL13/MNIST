@@ -46,8 +46,7 @@ class CustomDatasetDataLoader():
         train_subset_size = opt.train_size
         # sample subset from train part of previously split train dataset
 
-        if opt.train_size:
-            train_sampler = SubsetSampler(train_idx,
+        train_sampler = SubsetSampler(train_idx,
                                           train_subset_size,
                                           random_subset=True,
                                           shuffle=True)

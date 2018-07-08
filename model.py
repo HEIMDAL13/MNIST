@@ -6,7 +6,6 @@ class Net(nn.Module):
     def __init__(self,opt):
 
         super(Net, self).__init__()
-
         self.fc1 = nn.Sequential(nn.Linear(784, opt.first_size),nn.ReLU(),nn.Dropout(p=opt.drop1))
         self.fc2 = nn.Sequential(nn.Linear(opt.first_size, opt.n_hidden*4),nn.ReLU(),nn.Dropout(p=opt.drop2))
         self.fc3 = nn.Linear(opt.n_hidden*4, 10)
@@ -47,5 +46,18 @@ class Net_LSTM(nn.Module):
             final_output_lstm = torch.cat(
             (hidden_state_lr[0, :, :], hidden_state_lr[1, :, :], hidden_state_ud[0, :, :], hidden_state_ud[1, :, :]), 1)
         x = self.dropout_lstm(final_output_lstm)
+        x = self.fc3(x)
+        return F.log_softmax(x, dim=1)
+
+class Net_one(nn.Module):
+    def __init__(self, opt):
+        super(Net_one, self).__init__()
+        self.fc1 = nn.Sequential(nn.Linear(784, opt.first_size), nn.ReLU(), nn.Dropout(p=opt.drop1))
+        self.fc3 = nn.Linear(opt.first_size, 10)
+        self.opt = opt
+
+    def forward(self, x):
+        input_inter = x.view(x.size(0), -1)
+        x = self.fc1(input_inter)
         x = self.fc3(x)
         return F.log_softmax(x, dim=1)

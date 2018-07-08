@@ -19,7 +19,8 @@ class Solver(object):
         self._model = model
         self._data_loader = data_loader
         self._momentum = opt.momentum
-        self._optimizer = optim.SGD(model.parameters(), lr=opt.lr, momentum=opt.momentum)
+        self._optimizer = optim.SGD(model.parameters(), lr=opt.lr, momentum=opt.momentum,weight_decay=0.0002)
+        #self._optimizer = optim.Adam(model.parameters(), lr=opt.lr, eps=1, betas=(0.9, 0.999))
         self._train_loader = self._data_loader.get_train_loader()
         self._val_loader = self._data_loader.get_val_loader()
         self._test_loader = self._data_loader.get_test_loader()
@@ -67,7 +68,7 @@ class Solver(object):
         self.visualizer.write_text('\nTest set Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
             test_loss, correct, len(self._test_loader.dataset), test_acc))
 
-        return test_loss, test_acc
+        return test_acc,test_loss
 
 
     def val(self):
@@ -89,5 +90,19 @@ class Solver(object):
             val_loss, correct, len(self._val_loader.sampler),
             100. * correct / len(self._val_loader.sampler)))
 
-        return val_loss, val_acc
+        return val_acc, val_loss
 
+    def check_dataset(self):
+        i = 0
+        same = 0
+        for data_val, target in self._val_loader:
+            i+=1
+            if i % self._train_log_interval == 0:
+                print("Checking validation image ",i)
+            for data_train, target in self._train_loader:
+                if torch.eq(data_val, data_train).all():
+                    print("Train and validation use same images!!!")
+                    same+=1
+        print("finished! Everythink ok")
+
+        return same
