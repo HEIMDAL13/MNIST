@@ -28,7 +28,7 @@ def train_test(opt,visualizer):
     data_loader = CustomDatasetDataLoader()
     data_loader.initialize(opt)
 
-
+    visualizer.start_timmer()
 
     if opt.lstm:
         model = Net_LSTM(opt).to(opt.device)
@@ -39,7 +39,9 @@ def train_test(opt,visualizer):
     else:
         model = Net(opt).to(opt.device)
         print("Two layer model created")
-    best_model = copy.deepcopy(model)
+    #best_model = copy.deepcopy(model)
+    save_net(model,visualizer.filename)
+
     best_epoch = 0
     solver = Solver(model, data_loader, opt,visualizer)
     acc_past = 0
@@ -60,14 +62,18 @@ def train_test(opt,visualizer):
         val_losses.append(val_loss)
         if acc_past<val_acc:
             acc_past=val_acc
-            best_model = copy.deepcopy(model)
+            save_net(model,visualizer.filename)
+            #best_model = copy.deepcopy(model)
             best_epoch = epoch
 
     visualizer.write_text("Evaluation last model:")
     acc_last, loss_last = solver.test()
     visualizer.write_text("Evaluation best model epoch " +str(best_epoch))
-    acc_best, loss_best = solver.test(model=best_model)
 
+    load_net(model,visualizer.filename)
+    acc_best, loss_best = solver.test()
+    #acc_best, loss_best = solver.test(model=best_model)
+    visualizer.write_time()
     visualizer.plot_trainval(train_losses,val_losses)
     visualizer.flush_to_file()
 
@@ -119,6 +125,18 @@ def average(opt,visualizer):
     visualizer.write_text("Best Model: loss: {:.4f} +- {:.4f}".format(loss_best_m, loss_best_std))
     visualizer.write_text("Last Model: loss: {:.4f} +- {:.4f}".format(loss_last_m, loss_last_std))
     visualizer.flush_to_file()
+
+
+def save_net(net,filename):
+    save_filename = filename+'.pth'
+    save_path = './results/plot'
+    torch.save(net.state_dict(), save_path + save_filename)
+
+def load_net(net,filename):
+    save_filename = filename+'.pth'
+    save_path = './results/plot'
+    net.load_state_dict(torch.load(save_path + save_filename))
+
 
 if __name__ == '__main__':
     main()

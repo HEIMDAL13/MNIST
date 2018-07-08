@@ -39,6 +39,7 @@ class Options():
         if not self.initialized:
             self.initialize()
         self.opt = self.parser.parse_args()
+
         str_ids = self.opt.gpu_ids.split(',')
         self.opt.gpu_ids = []
         for str_id in str_ids:

@@ -2,6 +2,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 import time
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -11,11 +13,12 @@ import visdom
 class Visualizer():
 
     def __init__(self,opt):
-        plt.use('Agg')
         self.filename = ""
         print(time.strftime("%Y-%m-%d %H:%M"))
         self.text = time.strftime("%Y-%m-%d %H:%M")
         self.opt = opt
+        self.start_time = 0
+        self.end_time = 0
         # self.vis = visdom.Visdom(port=opt.display_port)
 
         if not os.path.exists("results"):
@@ -62,6 +65,10 @@ class Visualizer():
         print(in_text)
         self.text+=in_text+"\n"
 
+    def write_time(self):
+        exec_time = self.stop_timmer()
+        self.write_text("Total execution time: " + time.strftime("%H:%M:%S", time.gmtime(exec_time)))
+
     def plot_trainval(self,train,val):
         plt.plot(np.arange(1,len(train)+1),train,np.arange(1,len(val)+1),val)
         plt.ylabel('loss')
@@ -76,6 +83,12 @@ class Visualizer():
 
     def set_filename(self,name):
         self.filename = name
+
+    def start_timmer(self):
+        self.start_time = time.time()
+    def stop_timmer(self):
+        self.end_time = time.time()
+        return self.end_time-self.start_time
 
 
     #
