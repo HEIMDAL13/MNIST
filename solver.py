@@ -30,6 +30,7 @@ class Solver(object):
 
     def train(self,epoch):
         """Train model specified epochs on data_loader."""
+        start_time = time.time()
         self._model.train()
         av_loss = 0
         for batch_idx, (data, target) in enumerate(self._train_loader):
@@ -46,7 +47,8 @@ class Solver(object):
                            100. * batch_idx / len(self._train_loader), loss.item()))
         av_loss /= batch_idx
         self.visualizer.write_text('Train Average loss: {:.4f}'.format(av_loss))
-
+        time_end = time.time() - start_time
+        print("Train time: ",time_end)
         return av_loss
 
     def test(self, model=None):
@@ -76,6 +78,7 @@ class Solver(object):
         model.eval()
         val_loss = 0
         correct = 0
+        start_solver_time = time.time()
         with torch.no_grad():
             for data, target in self._val_loader:
                 data, target = data.to(self._device), target.to(self._device)
@@ -83,7 +86,9 @@ class Solver(object):
                 val_loss += F.nll_loss(output, target, size_average=False).item()  # sum up batch loss
                 pred = output.max(1, keepdim=True)[1]  # get the index of the max log-probability
                 correct += pred.eq(target.view_as(pred)).sum().item()
-
+        end_solver_time = time.time()
+        solver_time = end_solver_time - start_solver_time
+        print("Val time: ", solver_time)
         val_loss /= len(self._val_loader.sampler)
         val_acc = 100. * correct / len(self._val_loader.sampler)
         self.visualizer.write_text('\nValidation set Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(

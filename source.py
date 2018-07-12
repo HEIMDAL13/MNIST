@@ -4,9 +4,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import time
 from torchvision import datasets, transforms
 
 class Net(nn.Module):
+    def __init__(self):
+
+        super(Net, self).__init__()
+        self.fc1 = nn.Sequential(nn.Linear(784,1024),nn.ReLU())
+        self.fc2 = nn.Sequential(nn.Linear(1024, 1024),nn.ReLU())
+        self.fc3 = nn.Linear(1024, 10)
+    def forward(self, x):
+        input_inter = x.view(x.size(0), -1)
+        x = self.fc1(input_inter)
+        x = self.fc2(x)
+        x = self.fc3(x)
+        return F.log_softmax(x, dim=1)
+
+class Netb(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
@@ -37,7 +52,6 @@ def train(args, model, device, train_loader, optimizer, epoch):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
-
 def test(args, model, device, test_loader):
     model.eval()
     test_loss = 0

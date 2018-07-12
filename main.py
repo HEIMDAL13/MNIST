@@ -12,7 +12,7 @@ from data import CustomDatasetDataLoader
 from solver import Solver
 import numpy as np
 from visualizer import Visualizer
-
+import time
 
 def main():
     opt = Options().parse()
@@ -27,18 +27,25 @@ def train_test(opt,visualizer):
     torch.backends.cudnn.deterministic = True
     data_loader = CustomDatasetDataLoader()
     data_loader.initialize(opt)
-
+    torch.cuda.set_device(opt.gpu)
     visualizer.start_timmer()
 
     if opt.lstm:
-        model = Net_LSTM(opt).to(opt.device)
+        model = Net_LSTM(opt)
         print("LSTM model created")
     elif opt.one_layer:
-        model = Net_one(opt).to(opt.device)
+        model = Net_one(opt)
         print("One layer model created")
     else:
-        model = Net(opt).to(opt.device)
+        model = Net(opt)
         print("Two layer model created")
+
+    model.to(opt.device)
+    print("Training on: ", opt.device)
+    if opt.device == "cuda":
+        print("GPU: ",torch.cuda.current_device())
+
+
     #best_model = copy.deepcopy(model)
     save_net(model,visualizer.filename)
 
@@ -57,14 +64,22 @@ def train_test(opt,visualizer):
     val_losses=[]
 
     for epoch in range(1, opt.epochs + 1):
-        train_losses.append(solver.train(epoch))
+        start_epoch_time = time.time()
+        train_loss = solver.train(epoch)
+        train_losses.append(train_loss)
         val_acc,val_loss = solver.val()
         val_losses.append(val_loss)
+        if opt.display_id > 0:
+            visualizer.plot_current_errors(epoch, train_loss, val_loss)
         if acc_past<val_acc:
             acc_past=val_acc
             save_net(model,visualizer.filename)
             #best_model = copy.deepcopy(model)
             best_epoch = epoch
+        end_epoch_time = time.time()
+        epoch_time = end_epoch_time-start_epoch_time
+        print("Epoch time: ",epoch_time)
+
 
     visualizer.write_text("Evaluation last model:")
     acc_last, loss_last = solver.test()
@@ -74,7 +89,7 @@ def train_test(opt,visualizer):
     acc_best, loss_best = solver.test()
     #acc_best, loss_best = solver.test(model=best_model)
     visualizer.write_time()
-    visualizer.plot_trainval(train_losses,val_losses)
+    #visualizer.plot_trainval(train_losses,val_losses)
     visualizer.flush_to_file()
 
     return train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch
@@ -118,7 +133,7 @@ def average(opt,visualizer):
     visualizer.write_options()
     #visualizer.write_num_parameters()
     visualizer.write_network_structure()
-    visualizer.plot_trainval(train_losses_av, val_losses_av)
+    #visualizer.plot_trainval(train_losses_av, val_losses_av)
     visualizer.write_text("\nBest Model: acc: {:.4f} +- {:.4f}".format(acc_best_m, acc_best_std))
     visualizer.write_text("Last Model: acc: {:.4f} +- {:.4f}".format(acc_last_m, acc_last_std))
     visualizer.write_text("Best epoch: {:.2f}±{:.2f} \n".format(best_epoch_m, best_epoch_std))
@@ -128,13 +143,13 @@ def average(opt,visualizer):
 
 
 def save_net(net,filename):
-    save_filename = filename+'.pth'
-    save_path = './results/plot'
+    save_filename = 'net_'+filename+'.pth'
+    save_path = './results/'
     torch.save(net.state_dict(), save_path + save_filename)
 
 def load_net(net,filename):
-    save_filename = filename+'.pth'
-    save_path = './results/plot'
+    save_filename = 'net_'+filename+'.pth'
+    save_path = './results/'
     net.load_state_dict(torch.load(save_path + save_filename))
 
 

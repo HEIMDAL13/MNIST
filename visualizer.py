@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
+from collections import OrderedDict
 import time
 import matplotlib
 matplotlib.use('Agg')
@@ -19,8 +20,9 @@ class Visualizer():
         self.opt = opt
         self.start_time = 0
         self.end_time = 0
-        # self.vis = visdom.Visdom(port=opt.display_port)
-
+        if opt.display_id > 0:
+            import visdom
+            self.vis = visdom.Visdom(port=opt.display_port)
         if not os.path.exists("results"):
             os.makedirs("results")
 
@@ -75,6 +77,7 @@ class Visualizer():
         plt.title('train/test loss')
         plt.savefig('./results/plot_' + self.filename + '.jpg')
         plt.close()
+
     def flush_to_file(self):
         file = open("./results/"+self.filename+".txt", "w")
         file.write(self.text)
@@ -91,18 +94,19 @@ class Visualizer():
         return self.end_time-self.start_time
 
 
-    #
-    # def plot_current_errors(self, epoch, counter_ratio, opt, errors):
-    #     if not hasattr(self, 'plot_data'):
-    #         self.plot_data = {'X': [], 'Y': [], 'legend': list(errors.keys())}
-    #     self.plot_data['X'].append(epoch + counter_ratio)
-    #     self.plot_data['Y'].append([errors[k] for k in self.plot_data['legend']])
-    #     self.vis.line(
-    #         X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend']), 1),
-    #         Y=np.array(self.plot_data['Y']),
-    #         opts={
-    #             'title': self.name + ' loss over time',
-    #             'legend': self.plot_data['legend'],
-    #             'xlabel': 'epoch',
-    #             'ylabel': 'loss'},
-    #         win=self.display_id)
+
+    def plot_current_errors(self, epoch, train_loss, val_loss):
+        errors = OrderedDict([('train_loss', train_loss),('val_loss', val_loss),])
+        if not hasattr(self, 'plot_data'):
+            self.plot_data = {'X': [], 'Y': [], 'legend': ["train_loss", "val_loss"]}
+        self.plot_data['X'].append(epoch)
+        self.plot_data['Y'].append([errors[k] for k in self.plot_data['legend']])
+        self.vis.line(
+            X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend']), 1),
+            Y=np.array(self.plot_data['Y']),
+            opts={
+                'title': 'Plot' + ' loss over time',
+                'xlabel': 'epoch',
+                'legend': self.plot_data['legend'],
+                'ylabel': 'loss'},
+            win=self.opt.display_id)

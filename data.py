@@ -55,6 +55,7 @@ class CustomDatasetDataLoader():
         self.train_loader = torch.utils.data.DataLoader(self.train_dataset,
                                   sampler=train_sampler,
                                   batch_size=opt.batch_size,
+                                  num_workers=1,
                                   shuffle=False)
 
     def get_train_loader(self):

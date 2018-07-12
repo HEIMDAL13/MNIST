@@ -28,10 +28,13 @@ class Options():
         self.parser.add_argument('--drop2', type=float, default=0.5, help='dropout prob')
         self.parser.add_argument('--one_layer', type=int, default=0, help='onle layer only')
 
-        self.parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
+        self.parser.add_argument('--gpu', type=int, default=0, help='gpu id')
         self.parser.add_argument('--nThreads', default=8, type=int, help='# threads for loading data')
         self.parser.add_argument('--train_log_interval', type = int, default = 10,help = 'how many batches to wait before logging training status')
-        self.parser.add_argument('--device', type=str, default="cuda", help='Train subsampling flag')
+        self.parser.add_argument('--device', type=str, default="cuda", help='Where to train the network, cuda or cpu')
+
+        self.parser.add_argument('--display_id', type=int, default="1", help='Where to train the network, cuda or cpu')
+        self.parser.add_argument('--display_port', type=int, default="8095", help='Where to train the network, cuda or cpu')
 
         self.initialized = True
 
@@ -39,17 +42,4 @@ class Options():
         if not self.initialized:
             self.initialize()
         self.opt = self.parser.parse_args()
-
-        str_ids = self.opt.gpu_ids.split(',')
-        self.opt.gpu_ids = []
-        for str_id in str_ids:
-            id = int(str_id)
-            if id >= 0:
-                self.opt.gpu_ids.append(id)
-
-        # set gpu ids
-        if len(self.opt.gpu_ids) > 0:
-            torch.cuda.set_device(self.opt.gpu_ids[0])
-
-
         return self.opt
