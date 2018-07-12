@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from options import Options
-from model import Net, Net_LSTM, Net_one
+from models import Net_2FC, Net_LSTM, Net_1FC, LeNet, LeNet_LSTM
 from data import CustomDatasetDataLoader
 from solver import Solver
 import numpy as np
@@ -30,35 +30,38 @@ def train_test(opt,visualizer):
     torch.cuda.set_device(opt.gpu)
     visualizer.start_timmer()
 
-    if opt.lstm:
+    if opt.model=="2fc":
+        model = Net_2FC(opt)
+        print("Two layer model created")
+    elif opt.model=="lstm":
         model = Net_LSTM(opt)
         print("LSTM model created")
-    elif opt.one_layer:
-        model = Net_one(opt)
+    elif opt.model=="1fc":
+        model = Net_1FC(opt)
         print("One layer model created")
+    elif opt.model=="lenet":
+        model = LeNet(opt)
+        print("Lenet model created")
+    elif opt.model == "lenetlstm":
+        model = LeNet_LSTM(opt)
+        print("Lenet model+lstm created")
     else:
-        model = Net(opt)
-        print("Two layer model created")
+        raise ValueError("Model [%s] not recognized." % opt.model)
 
     model.to(opt.device)
     print("Training on: ", opt.device)
     if opt.device == "cuda":
         print("GPU: ",torch.cuda.current_device())
 
-
-    #best_model = copy.deepcopy(model)
     save_net(model,visualizer.filename)
-
     best_epoch = 0
     solver = Solver(model, data_loader, opt,visualizer)
     acc_past = 0
-    #visualizer.set_filename(opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(opt.drop1)+"-"+ str(opt.drop2)+"seed"+str(opt.seed) + "subs" + str(opt.train_size))
-    visualizer.set_filename(opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(int(opt.drop1*100))+"-"+ str(int(opt.drop2*100)) + "subs" + str(opt.train_size)+"1_lay"+ str(opt.one_layer)+"seed"+str(opt.seed))
+    visualizer.set_filename(opt)
     visualizer.write_options()
     visualizer.write_network_structure()
     pytorch_total_params = sum(p.numel() for p in model.parameters())
     visualizer.write_text("Total Network parameters: " + str(pytorch_total_params))
-
 
     train_losses=[]
     val_losses=[]
@@ -74,7 +77,6 @@ def train_test(opt,visualizer):
         if acc_past<val_acc:
             acc_past=val_acc
             save_net(model,visualizer.filename)
-            #best_model = copy.deepcopy(model)
             best_epoch = epoch
         end_epoch_time = time.time()
         epoch_time = end_epoch_time-start_epoch_time
@@ -87,9 +89,7 @@ def train_test(opt,visualizer):
 
     load_net(model,visualizer.filename)
     acc_best, loss_best = solver.test()
-    #acc_best, loss_best = solver.test(model=best_model)
     visualizer.write_time()
-    #visualizer.plot_trainval(train_losses,val_losses)
     visualizer.flush_to_file()
 
     return train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch
@@ -131,9 +131,7 @@ def average(opt,visualizer):
 
     visualizer.set_filename("AVERAGE"+opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(int(opt.drop1*100))+"-"+ str(int(opt.drop2*100)) + "subs" + str(opt.train_size)+"1_lay"+ str(opt.one_layer))
     visualizer.write_options()
-    #visualizer.write_num_parameters()
     visualizer.write_network_structure()
-    #visualizer.plot_trainval(train_losses_av, val_losses_av)
     visualizer.write_text("\nBest Model: acc: {:.4f} +- {:.4f}".format(acc_best_m, acc_best_std))
     visualizer.write_text("Last Model: acc: {:.4f} +- {:.4f}".format(acc_last_m, acc_last_std))
     visualizer.write_text("Best epoch: {:.2f}±{:.2f} \n".format(best_epoch_m, best_epoch_std))

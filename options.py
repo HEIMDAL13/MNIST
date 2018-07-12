@@ -20,13 +20,12 @@ class Options():
         self.parser.add_argument('--val_size', type=int, default=10000,help='Validation datazet size')
         self.parser.add_argument('--train_size', type=int, default=0,help='Train datazet size')
 
+        self.parser.add_argument('--model', type=str, default='2fc', help='Model to be used (2fc, lstm, 1fc)')
         self.parser.add_argument('--first_size', type=int, default=128, help='size first fc layer')
         self.parser.add_argument('--n_hidden', type=int, default=0, help='hidden_lstm layers')
         self.parser.add_argument('--shape_lstm', type=int, default=0, help='shape lstm')
-        self.parser.add_argument('--lstm', type=int, default=0, help='lstm')
         self.parser.add_argument('--drop1', type=float, default=0, help='dropout prob')
         self.parser.add_argument('--drop2', type=float, default=0.5, help='dropout prob')
-        self.parser.add_argument('--one_layer', type=int, default=0, help='onle layer only')
 
         self.parser.add_argument('--gpu', type=int, default=0, help='gpu id')
         self.parser.add_argument('--nThreads', default=8, type=int, help='# threads for loading data')

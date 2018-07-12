@@ -28,24 +28,25 @@ class Visualizer():
 
 
     def write_network_structure(self):
+        self.write_text("Network Structure: \n")
 
-        if self.opt.lstm == 0:
-            self.write_text("PARAMETERS: \n")
+        if self.opt.model == "2fc":
             self.write_text("1: FC 784x" + str(self.opt.first_size))
             self.write_text("2: FC " + str(self.opt.first_size) + "x" + str(self.opt.n_hidden * 4))
-            self.write_text("3: FC " + str(self.opt.n_hidden * 4) + "x10")
-
-        else:
+            self.write_text("3: FC " + str(self.opt.n_hidden * 4) + "x10\n")
+        elif self.opt.model == "lstm":
             self.write_text("1: FC 784x" + str(self.opt.first_size))
-
             if self.opt.shape_lstm == 0:
-                self.write_text("2: LSTM " + str(self.opt.first_size) + "x" + str(self.opt.n_hidden * 4) + " Shaped as:" + str(
-                self.opt.first_size) + "x 1" + " n_hidden" + str(self.opt.n_hidden * 2))
+                self.write_text("2: LSTM " + str(self.opt.first_size) + "x" + str(self.opt.n_hidden*4) + " Shaped as:" + str(
+                self.opt.first_size) + "x1" + " n_hidden: " + str(self.opt.n_hidden*2))
             else:
                 self.write_text("2: LSTM " + str(self.opt.first_size) + "x" + str(self.opt.n_hidden * 4) + " Shaped as:" + str(
-                self.opt.shape_lstm) + "x" + str(int(self.opt.first_size / self.opt.shape_lstm)) + " n_hidden" + str(
+                self.opt.shape_lstm) + "x" + str(int(self.opt.first_size / self.opt.shape_lstm)) + " n_hidden: " + str(
                 self.opt.n_hidden))
-                self.write_text("3: FC " + str(self.opt.n_hidden * 4)+"\n\n")
+            self.write_text("3: FC " + str(self.opt.n_hidden * 4)+ "x10\n")
+        elif self.opt.model == "fc":
+            self.write_text("1: FC 784x" + str(self.opt.first_size))
+            self.write_text("2: FC " + str(self.opt.n_hidden * 4) + "x10\n")
 
     def write_val_result(self, in_text):
         self.text+="sd"
@@ -84,9 +85,11 @@ class Visualizer():
         self.text=""
         file.close()
 
-    def set_filename(self,name):
-        self.filename = name
-
+    def set_filename(self,opt):
+        if opt.name =="":
+            self.filename = str(opt.model)+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'drop'+str(int(opt.drop1*100))+"x"+ str(int(opt.drop2*100)) + "smpl" + str(opt.train_size)+"seed"+str(opt.seed)
+        else:
+            self.filename = opt.name+str(opt.seed)
     def start_timmer(self):
         self.start_time = time.time()
     def stop_timmer(self):
