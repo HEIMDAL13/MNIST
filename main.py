@@ -106,6 +106,7 @@ def average(opt,visualizer):
     for seed in range(0, opt.seeds):
         print("SEED no: ",seed)
         opt.seed = seed
+        visualizer.reset_plot()
         train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch = train_test(opt,visualizer)
         acc_best_v.append(acc_best)
         acc_last_v.append(acc_last)
@@ -129,7 +130,7 @@ def average(opt,visualizer):
     loss_last_std = np.std(np.array(loss_last_v))
     best_epoch_std = np.std(np.array(best_epoch_v))
 
-    visualizer.set_filename("AVERAGE"+opt.name+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'lstm'+str(opt.lstm)+'drop'+str(int(opt.drop1*100))+"-"+ str(int(opt.drop2*100)) + "subs" + str(opt.train_size)+"1_lay"+ str(opt.one_layer))
+    visualizer.set_filename_av(opt)
     visualizer.write_options()
     visualizer.write_network_structure()
     visualizer.write_text("\nBest Model: acc: {:.4f} +- {:.4f}".format(acc_best_m, acc_best_std))

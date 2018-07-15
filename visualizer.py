@@ -20,7 +20,8 @@ class Visualizer():
         self.opt = opt
         self.start_time = 0
         self.end_time = 0
-        if opt.display_id > 0:
+        self.display_id = opt.display_id*100
+        if self.display_id > 0:
             import visdom
             self.vis = visdom.Visdom(port=opt.display_port)
         if not os.path.exists("results"):
@@ -90,6 +91,14 @@ class Visualizer():
             self.filename = str(opt.model)+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'drop'+str(int(opt.drop1*100))+"x"+ str(int(opt.drop2*100)) + "smpl" + str(opt.train_size)+"seed"+str(opt.seed)
         else:
             self.filename = opt.name+str(opt.seed)
+
+    def set_filename_av(self,opt):
+        if opt.name =="":
+            self.filename = "AVERAGE_"+str(opt.model)+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'drop'+str(int(opt.drop1*100))+"x"+ str(int(opt.drop2*100)) + "smpl" + str(opt.train_size)
+        else:
+            self.filename = "AVERAGE_"+opt.name
+
+
     def start_timmer(self):
         self.start_time = time.time()
     def stop_timmer(self):
@@ -99,17 +108,21 @@ class Visualizer():
 
 
     def plot_current_errors(self, epoch, train_loss, val_loss):
-        errors = OrderedDict([('train_loss', train_loss),('val_loss', val_loss),])
+        errors = [train_loss, val_loss]
         if not hasattr(self, 'plot_data'):
             self.plot_data = {'X': [], 'Y': [], 'legend': ["train_loss", "val_loss"]}
         self.plot_data['X'].append(epoch)
-        self.plot_data['Y'].append([errors[k] for k in self.plot_data['legend']])
+        self.plot_data['Y'].append(errors)
         self.vis.line(
             X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend']), 1),
             Y=np.array(self.plot_data['Y']),
             opts={
-                'title': 'Plot' + ' loss over time',
+                'title': self.filename + ' loss over time',
                 'xlabel': 'epoch',
                 'legend': self.plot_data['legend'],
                 'ylabel': 'loss'},
-            win=self.opt.display_id)
+            win=self.display_id)
+
+    def reset_plot(self):
+        self.plot_data = {'X': [], 'Y': [], 'legend': ["train_loss", "val_loss"]}
+        self.display_id+=1

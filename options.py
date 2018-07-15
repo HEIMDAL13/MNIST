@@ -9,7 +9,7 @@ class Options():
         self.initialized = False
 
     def initialize(self):
-        self.parser.add_argument('--name', type=str, default='res_', help='name of the experiment. It decides where to store samples and models')
+        self.parser.add_argument('--name', type=str, default="", help='name of the experiment. It decides where to store samples and models')
         self.parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train (default: 10)')
         self.parser.add_argument('--batch_size', type=int, default=64, help='input batch size')
         self.parser.add_argument('--seed', type=int, default=0, help='initial random seed for deterministic results')
@@ -32,7 +32,7 @@ class Options():
         self.parser.add_argument('--train_log_interval', type = int, default = 10,help = 'how many batches to wait before logging training status')
         self.parser.add_argument('--device', type=str, default="cuda", help='Where to train the network, cuda or cpu')
 
-        self.parser.add_argument('--display_id', type=int, default="1", help='Where to train the network, cuda or cpu')
+        self.parser.add_argument('--display_id', type=int, default="0", help='Where to train the network, cuda or cpu')
         self.parser.add_argument('--display_port', type=int, default="8095", help='Where to train the network, cuda or cpu')
 
         self.initialized = True
