@@ -16,6 +16,8 @@ class Options():
         self.parser.add_argument('--seeds', type=int, default=5, help='initial random seed for deterministic results')
 
         self.parser.add_argument('--lr', type=float, default=0.001, metavar='LR',help='learning rate (default: 0.01)')
+        self.parser.add_argument('--weight_decay', type=float, default=0.0002, metavar='WD',help='weight decay')
+        self.parser.add_argument('--optimizer', type=str, default='SGD', metavar='OP',help='optimizer')
         self.parser.add_argument('--momentum', type=float, default=0.5, metavar='M',help='SGD momentum (default: 0.5)')
         self.parser.add_argument('--val_size', type=int, default=10000,help='Validation datazet size')
         self.parser.add_argument('--train_size', type=int, default=0,help='Train datazet size')
@@ -34,6 +36,7 @@ class Options():
 
         self.parser.add_argument('--display_id', type=int, default="0", help='Where to train the network, cuda or cpu')
         self.parser.add_argument('--display_port', type=int, default="8095", help='Where to train the network, cuda or cpu')
+        self.parser.add_argument('--vis_env', type=str, default="default", help='Where to train the network, cuda or cpu')
 
         self.initialized = True
 

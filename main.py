@@ -20,14 +20,8 @@ def main():
     average(opt,visualizer)
     #train_test(opt,visualizer)
 
-def train_test(opt,visualizer):
-    torch.manual_seed(opt.seed)
-    torch.manual_seed(opt.seed)
-    np.random.seed(opt.seed)
-    torch.backends.cudnn.deterministic = True
-    data_loader = CustomDatasetDataLoader()
-    data_loader.initialize(opt)
-    torch.cuda.set_device(opt.gpu)
+def train_test(opt,visualizer,data_loader):
+
     visualizer.start_timmer()
 
     if opt.model=="2fc":
@@ -56,7 +50,7 @@ def train_test(opt,visualizer):
     save_net(model,visualizer.filename)
     best_epoch = 0
     solver = Solver(model, data_loader, opt,visualizer)
-    acc_past = 0
+    best_acc = 0
     visualizer.set_filename(opt)
     visualizer.write_options()
     visualizer.write_network_structure()
@@ -68,14 +62,15 @@ def train_test(opt,visualizer):
 
     for epoch in range(1, opt.epochs + 1):
         start_epoch_time = time.time()
-        train_loss = solver.train(epoch)
+        train_loss,train_acc = solver.train(epoch)
+        print("Accuracy TRAINING: ",train_acc)
         train_losses.append(train_loss)
         val_acc,val_loss = solver.val()
         val_losses.append(val_loss)
         if opt.display_id > 0:
-            visualizer.plot_current_errors(epoch, train_loss, val_loss)
-        if acc_past<val_acc:
-            acc_past=val_acc
+            visualizer.plot_current_errors(epoch, train_loss, val_loss,train_acc,val_acc)
+        if best_acc<val_acc:
+            best_acc=val_acc
             save_net(model,visualizer.filename)
             best_epoch = epoch
         end_epoch_time = time.time()
@@ -95,6 +90,13 @@ def train_test(opt,visualizer):
     return train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch
 
 def average(opt,visualizer):
+
+    torch.manual_seed(opt.seed)
+    torch.manual_seed(opt.seed)
+    np.random.seed(opt.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.cuda.set_device(opt.gpu)
+
     train_losses_av = np.zeros(opt.epochs)
     val_losses_av = np.zeros(opt.epochs)
     acc_best_v = []
@@ -102,12 +104,14 @@ def average(opt,visualizer):
     loss_best_v = []
     loss_last_v = []
     best_epoch_v = []
+    data_loader = CustomDatasetDataLoader()
+    data_loader.initialize(opt)
 
     for seed in range(0, opt.seeds):
         print("SEED no: ",seed)
         opt.seed = seed
         visualizer.reset_plot()
-        train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch = train_test(opt,visualizer)
+        train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch = train_test(opt,visualizer,data_loader)
         acc_best_v.append(acc_best)
         acc_last_v.append(acc_last)
         loss_best_v.append(loss_best)
@@ -133,13 +137,13 @@ def average(opt,visualizer):
     visualizer.set_filename_av(opt)
     visualizer.write_options()
     visualizer.write_network_structure()
-    visualizer.write_text("\nBest Model: acc: {:.4f} +- {:.4f}".format(acc_best_m, acc_best_std))
-    visualizer.write_text("Last Model: acc: {:.4f} +- {:.4f}".format(acc_last_m, acc_last_std))
+    visualizer.write_text("\nBest Model: acc: {:.2f}±{:.2f}".format(acc_best_m, acc_best_std))
+    visualizer.write_text("Last Model: acc: {:.2f}±{:.2f}".format(acc_last_m, acc_last_std))
     visualizer.write_text("Best epoch: {:.2f}±{:.2f} \n".format(best_epoch_m, best_epoch_std))
-    visualizer.write_text("Best Model: loss: {:.4f} +- {:.4f}".format(loss_best_m, loss_best_std))
-    visualizer.write_text("Last Model: loss: {:.4f} +- {:.4f}".format(loss_last_m, loss_last_std))
+    visualizer.write_text("Best Model: loss: {:.2f}±{:.2f}".format(loss_best_m, loss_best_std))
+    visualizer.write_text("Last Model: loss: {:.2f}±{:.2f}".format(loss_last_m, loss_last_std))
     visualizer.flush_to_file()
-
+    return acc_last_m
 
 def save_net(net,filename):
     save_filename = 'net_'+filename+'.pth'

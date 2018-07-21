@@ -17,11 +17,6 @@ class CustomDatasetDataLoader():
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,))
             ]))
-        self.train_loader = torch.utils.data.DataLoader(self.train_dataset,
-            batch_size=opt.batch_size,
-            shuffle=True,
-            num_workers= 1,
-            pin_memory=True)
 
         self.test_loader = torch.utils.data.DataLoader(self.test_dataset,
             batch_size=opt.batch_size,
@@ -40,7 +35,7 @@ class CustomDatasetDataLoader():
         else:
             self.val_loader = self.test_loader
 
-        train_sampler = SubsetRandomSampler(train_idx)
+        # train_sampler = SubsetRandomSampler(train_idx)
 
         # set train subset size
         train_subset_size = opt.train_size

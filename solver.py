@@ -19,8 +19,10 @@ class Solver(object):
         self._model = model
         self._data_loader = data_loader
         self._momentum = opt.momentum
-        self._optimizer = optim.SGD(model.parameters(), lr=opt.lr, momentum=opt.momentum,weight_decay=0.0002)
-        #self._optimizer = optim.Adam(model.parameters(), lr=opt.lr, eps=1, betas=(0.9, 0.999))
+        if opt.optimizer == 'SGD':
+            self._optimizer = optim.SGD(model.parameters(), lr=opt.lr, momentum=opt.momentum,weight_decay=opt.weight_decay)
+        else:
+            self._optimizer = optim.Adam(model.parameters(), lr=opt.lr, eps=1, betas=(0.9, 0.999),weight_decay=opt.weight_decay)
         self._train_loader = self._data_loader.get_train_loader()
         self._val_loader = self._data_loader.get_val_loader()
         self._test_loader = self._data_loader.get_test_loader()
@@ -33,23 +35,27 @@ class Solver(object):
         start_time = time.time()
         self._model.train()
         av_loss = 0
+        correct = 0
         for batch_idx, (data, target) in enumerate(self._train_loader):
             data, target = data.to(self._device), target.to(self._device)
             self._optimizer.zero_grad()
             output = self._model(data)
             loss = F.nll_loss(output, target)
             av_loss+=loss.item()
+            pred = output.max(1, keepdim=True)[1]  # get the index of the max log-probability
+            correct += pred.eq(target.view_as(pred)).sum().item()
             loss.backward()
             self._optimizer.step()
             if batch_idx % self._train_log_interval == 0:
                 self.visualizer.write_text('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(self._train_loader.sampler),
                            100. * batch_idx / len(self._train_loader), loss.item()))
+        train_acc = 100. * correct / len(self._train_loader.sampler)
         av_loss /= batch_idx
         self.visualizer.write_text('Train Average loss: {:.4f}'.format(av_loss))
         time_end = time.time() - start_time
         print("Train time: ",time_end)
-        return av_loss
+        return av_loss,train_acc
 
     def test(self, model=None):
         if model is None:

@@ -20,13 +20,17 @@ class Visualizer():
         self.opt = opt
         self.start_time = 0
         self.end_time = 0
-        self.display_id = opt.display_id*100
+        self.display_id = opt.display_id*10
         if self.display_id > 0:
             import visdom
             self.vis = visdom.Visdom(port=opt.display_port)
         if not os.path.exists("results"):
             os.makedirs("results")
-
+        if opt.vis_env == "default":
+            self.env = str(opt.momentum)+'_'+opt.model+'_drop'+str(0!=opt.drop2)+'_'+ str(opt.train_size)
+        else:
+            self.env = opt.vis_env
+        print("SELF ENV: ",self.env)
 
     def write_network_structure(self):
         self.write_text("Network Structure: \n")
@@ -107,22 +111,22 @@ class Visualizer():
 
 
 
-    def plot_current_errors(self, epoch, train_loss, val_loss):
-        errors = [train_loss, val_loss]
+    def plot_current_errors(self, epoch, train_loss, val_loss,train_acc,val_acc):
+        errors = [train_loss, val_loss, train_acc,val_acc]
         if not hasattr(self, 'plot_data'):
-            self.plot_data = {'X': [], 'Y': [], 'legend': ["train_loss", "val_loss"]}
+            self.plot_data = {'X': [], 'Y': [], 'legend': ["train_loss", "val_loss","train_acc","val_acc"]}
         self.plot_data['X'].append(epoch)
         self.plot_data['Y'].append(errors)
         self.vis.line(
             X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend']), 1),
             Y=np.array(self.plot_data['Y']),
             opts={
-                'title': self.filename + ' loss over time',
+                'title': self.filename + ' id:' +str(self.display_id),
                 'xlabel': 'epoch',
                 'legend': self.plot_data['legend'],
                 'ylabel': 'loss'},
-            win=self.display_id)
+            win=self.display_id,env=self.env)
 
     def reset_plot(self):
-        self.plot_data = {'X': [], 'Y': [], 'legend': ["train_loss", "val_loss"]}
+        self.plot_data = {'X': [], 'Y': [], 'legend': ["train_loss", "val_loss","train_acc","val_acc"]}
         self.display_id+=1
