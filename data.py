@@ -8,15 +8,29 @@ class CustomDatasetDataLoader():
 
     def initialize(self, opt):
 
-        self.train_dataset = datasets.MNIST('../data', train=True, download=True,
-                           transform=transforms.Compose([
-                               transforms.ToTensor(),
-                               transforms.Normalize((0.1307,), (0.3081,))
-                           ]))
-        self.test_dataset = datasets.MNIST('../data', train=False, transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,))
-            ]))
+        if opt.dataset == "mnist":
+            print("MNIST dataset laoded!")
+
+            self.train_dataset = datasets.MNIST('../data', train=True, download=True,
+                               transform=transforms.Compose([
+                                   transforms.ToTensor(),
+                                   transforms.Normalize((0.1307,), (0.3081,))
+                               ]))
+            self.test_dataset = datasets.MNIST('../data', train=False, transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.1307,), (0.3081,))
+                ]))
+        elif opt.dataset == "cifar10":
+            print("Cifar10 dataset laoded!")
+            transform = transforms.Compose(
+                [transforms.ToTensor(),
+                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+            self.train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+
+            self.test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+        else:
+            raise ValueError("Dataset [%s] not recognized." % opt.dataset)
 
         self.test_loader = torch.utils.data.DataLoader(self.test_dataset,
             batch_size=opt.batch_size,

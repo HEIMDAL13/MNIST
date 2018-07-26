@@ -8,6 +8,7 @@ import time
 import copy
 from torch.autograd import Variable
 import itertools
+from tensorboardX import SummaryWriter
 
 class Solver(object):
     """Neural Network Training Solver."""
@@ -28,7 +29,7 @@ class Solver(object):
         self._test_loader = self._data_loader.get_test_loader()
         self.visualizer = visualizer
         self._device = opt.device
-
+        # self.writer = SummaryWriter()
 
     def train(self,epoch):
         """Train model specified epochs on data_loader."""
@@ -46,6 +47,10 @@ class Solver(object):
             correct += pred.eq(target.view_as(pred)).sum().item()
             loss.backward()
             self._optimizer.step()
+
+            # for name, param in filter(lambda np: np[1].grad is not None, self._model.named_parameters()):
+            #     self.writer.add_histogram(name, param.grad.data.cpu().numpy(), (epoch*8+batch_idx), bins='doane')
+
             if batch_idx % self._train_log_interval == 0:
                 self.visualizer.write_text('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(self._train_loader.sampler),

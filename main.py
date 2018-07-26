@@ -7,20 +7,37 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from options import Options
-from models import Net_2FC, Net_LSTM, Net_1FC, LeNet, LeNet_LSTM
+from models import Net_2FC, Net_LSTM, Net_1FC, LeNet, LeNet_LSTM, Net_RNN
 from data import CustomDatasetDataLoader
 from solver import Solver
 import numpy as np
 from visualizer import Visualizer
 import time
+from torchvision import datasets
+from tensorboardX import SummaryWriter
 
 def main():
     opt = Options().parse()
     visualizer = Visualizer(opt)
-    average(opt,visualizer)
-    #train_test(opt,visualizer)
+
+    torch.manual_seed(opt.seed)
+    torch.manual_seed(opt.seed)
+    np.random.seed(opt.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.cuda.set_device(opt.gpu)
+
+    data_loader = CustomDatasetDataLoader()
+    data_loader.initialize(opt)
+    if opt.seeds == 1:
+        train_test(opt, visualizer, data_loader)
+    else:
+        average(opt,visualizer)
+
 
 def train_test(opt,visualizer,data_loader):
+
+    if opt.plot_grad==1:
+        writer = SummaryWriter()
 
     visualizer.start_timmer()
 
@@ -33,6 +50,9 @@ def train_test(opt,visualizer,data_loader):
     elif opt.model=="1fc":
         model = Net_1FC(opt)
         print("One layer model created")
+    elif opt.model == "rnn":
+        model = Net_RNN(opt)
+        print("RNN model created")
     elif opt.model=="lenet":
         model = LeNet(opt)
         print("Lenet model created")
@@ -61,6 +81,7 @@ def train_test(opt,visualizer,data_loader):
     val_losses=[]
 
     for epoch in range(1, opt.epochs + 1):
+
         start_epoch_time = time.time()
         train_loss,train_acc = solver.train(epoch)
         print("Accuracy TRAINING: ",train_acc)
@@ -73,6 +94,16 @@ def train_test(opt,visualizer,data_loader):
             best_acc=val_acc
             save_net(model,visualizer.filename)
             best_epoch = epoch
+        #
+        # for name, param in model.named_parameters():
+        #    if 'bn' not in name:
+        #       writer.add_histogram(name, param, epoch,bins='doane')
+        if opt.plot_grad==1:
+            for name, param in filter(lambda np: np[1].grad is not None, model.named_parameters()):
+                writer.add_histogram(name, param.grad.data.cpu().numpy(),epoch,bins='doane')
+
+        params = list(model.parameters())
+
         end_epoch_time = time.time()
         epoch_time = end_epoch_time-start_epoch_time
         print("Epoch time: ",epoch_time)
