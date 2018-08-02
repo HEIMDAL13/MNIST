@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from options import Options
-from models import Net_2FC, Net_LSTM, Net_1FC, LeNet, LeNet_LSTM, Net_RNN
+from models import Net_2FC, Net_LSTM, Net_1FC, LeNet, LeNet_LSTM, Net_RNN, LeNet_plus, Net_LSTM2
 from data import CustomDatasetDataLoader
 from solver import Solver
 import numpy as np
@@ -31,7 +31,7 @@ def main():
     if opt.seeds == 1:
         train_test(opt, visualizer, data_loader)
     else:
-        average(opt,visualizer)
+        average(opt,visualizer, data_loader)
 
 
 def train_test(opt,visualizer,data_loader):
@@ -50,6 +50,9 @@ def train_test(opt,visualizer,data_loader):
     elif opt.model=="1fc":
         model = Net_1FC(opt)
         print("One layer model created")
+    elif opt.model=="lstm2":
+        model = Net_LSTM2(opt)
+        print("One layer model created")
     elif opt.model == "rnn":
         model = Net_RNN(opt)
         print("RNN model created")
@@ -59,6 +62,9 @@ def train_test(opt,visualizer,data_loader):
     elif opt.model == "lenetlstm":
         model = LeNet_LSTM(opt)
         print("Lenet model+lstm created")
+    elif opt.model == "lenet+":
+        model = LeNet_plus(opt)
+        print("Lenet model+ created")
     else:
         raise ValueError("Model [%s] not recognized." % opt.model)
 
@@ -120,7 +126,7 @@ def train_test(opt,visualizer,data_loader):
 
     return train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch
 
-def average(opt,visualizer):
+def average(opt,visualizer,data_loader):
 
     torch.manual_seed(opt.seed)
     torch.manual_seed(opt.seed)
@@ -135,8 +141,7 @@ def average(opt,visualizer):
     loss_best_v = []
     loss_last_v = []
     best_epoch_v = []
-    data_loader = CustomDatasetDataLoader()
-    data_loader.initialize(opt)
+
 
     for seed in range(0, opt.seeds):
         print("SEED no: ",seed)

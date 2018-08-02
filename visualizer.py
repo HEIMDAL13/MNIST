@@ -27,7 +27,7 @@ class Visualizer():
         if not os.path.exists("results"):
             os.makedirs("results")
         if opt.vis_env == "default":
-            self.env = str(opt.momentum)+'_'+opt.model+'_drop'+str(0!=opt.drop2)+'_'+ str(opt.train_size)
+            self.env = str(opt.momentum)+'_'+str(opt.batch_norm)+'_'+opt.model+'_drop'+str(0!=opt.drop2)+'_'+ str(opt.train_size)
         else:
             self.env = opt.vis_env
         print("SELF ENV: ",self.env)
@@ -92,13 +92,13 @@ class Visualizer():
 
     def set_filename(self,opt):
         if opt.name =="":
-            self.filename = str(opt.model)+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'drop'+str(int(opt.drop1*100))+"x"+ str(int(opt.drop2*100)) + "smpl" + str(opt.train_size)+"seed"+str(opt.seed)
+            self.filename = str(opt.model)+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'drop'+str(int(opt.drop1*100))+"x"+ str(int(opt.drop2*100)) + "sz" + str(opt.train_size)+"sd"+str(opt.seed)
         else:
             self.filename = opt.name+str(opt.seed)
 
     def set_filename_av(self,opt):
         if opt.name =="":
-            self.filename = "AVERAGE_"+str(opt.model)+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'drop'+str(int(opt.drop1*100))+"x"+ str(int(opt.drop2*100)) + "smpl" + str(opt.train_size)
+            self.filename = "AVERAGE_"+str(opt.model)+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'drop'+str(int(opt.drop1*100))+"x"+ str(int(opt.drop2*100)) + "sz" + str(opt.train_size)
         else:
             self.filename = "AVERAGE_"+opt.name
 
