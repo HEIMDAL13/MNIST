@@ -20,6 +20,7 @@ class Visualizer():
         self.opt = opt
         self.start_time = 0
         self.end_time = 0
+        self.model_str  =""
         self.display_id = opt.display_id*10
         if self.display_id > 0:
             import visdom
@@ -27,31 +28,14 @@ class Visualizer():
         if not os.path.exists("results"):
             os.makedirs("results")
         if opt.vis_env == "default":
-            self.env = str(opt.momentum)+'_'+str(opt.batch_norm)+'_'+opt.model+'_drop'+str(0!=opt.drop2)+'_'+ str(opt.train_size)
+            self.env = str(opt.momentum)+'_'+str(opt.batch_norm1)+'_'+opt.model+'_drop'+str(0!=opt.drop2)+'_'+ str(opt.train_size)
         else:
             self.env = opt.vis_env
         print("SELF ENV: ",self.env)
 
     def write_network_structure(self):
-        self.write_text("Network Structure: \n")
-
-        if self.opt.model == "2fc":
-            self.write_text("1: FC 784x" + str(self.opt.first_size))
-            self.write_text("2: FC " + str(self.opt.first_size) + "x" + str(self.opt.n_hidden * 4))
-            self.write_text("3: FC " + str(self.opt.n_hidden * 4) + "x10\n")
-        elif self.opt.model == "lstm":
-            self.write_text("1: FC 784x" + str(self.opt.first_size))
-            if self.opt.shape_lstm == 0:
-                self.write_text("2: LSTM " + str(self.opt.first_size) + "x" + str(self.opt.n_hidden*4) + " Shaped as:" + str(
-                self.opt.first_size) + "x1" + " n_hidden: " + str(self.opt.n_hidden*2))
-            else:
-                self.write_text("2: LSTM " + str(self.opt.first_size) + "x" + str(self.opt.n_hidden * 4) + " Shaped as:" + str(
-                self.opt.shape_lstm) + "x" + str(int(self.opt.first_size / self.opt.shape_lstm)) + " n_hidden: " + str(
-                self.opt.n_hidden))
-            self.write_text("3: FC " + str(self.opt.n_hidden * 4)+ "x10\n")
-        elif self.opt.model == "fc":
-            self.write_text("1: FC 784x" + str(self.opt.first_size))
-            self.write_text("2: FC " + str(self.opt.n_hidden * 4) + "x10\n")
+        print(self.model_str)
+        self.write_text(self.model_str)
 
     def write_val_result(self, in_text):
         self.text+="sd"
@@ -92,13 +76,13 @@ class Visualizer():
 
     def set_filename(self,opt):
         if opt.name =="":
-            self.filename = str(opt.model)+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'drop'+str(int(opt.drop1*100))+"x"+ str(int(opt.drop2*100)) + "sz" + str(opt.train_size)+"sd"+str(opt.seed)
+            self.filename = str(opt.model)+str(opt.first_size)+"_"+str(opt.drop1)+str(opt.batch_norm1)+"x"+str(opt.second_size)+"_"+str(opt.drop2)+str(opt.batch_norm2)+"x"+str(opt.third_size)+"_"+str(opt.drop3)+str(opt.batch_norm3)+"sz"+str(opt.train_size)+"s"+str(opt.seed)
         else:
             self.filename = opt.name+str(opt.seed)
 
     def set_filename_av(self,opt):
         if opt.name =="":
-            self.filename = "AVERAGE_"+str(opt.model)+str(opt.first_size)+"x"+str(opt.n_hidden*4)+'drop'+str(int(opt.drop1*100))+"x"+ str(int(opt.drop2*100)) + "sz" + str(opt.train_size)
+            self.filename = "AVERAGE_"+str(opt.model)+str(opt.first_size)+"_"+str(opt.drop1)+str(opt.batch_norm1)+"x"+str(opt.second_size)+"_"+str(opt.drop2)+str(opt.batch_norm2)+"x"+str(opt.third_size)+"_"+str(opt.drop3)+str(opt.batch_norm3)+"sz"+str(opt.train_size)+"s"+str(opt.seed)
         else:
             self.filename = "AVERAGE_"+opt.name
 

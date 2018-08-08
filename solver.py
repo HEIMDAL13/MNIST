@@ -22,6 +22,9 @@ class Solver(object):
         self._momentum = opt.momentum
         if opt.optimizer == 'SGD':
             self._optimizer = optim.SGD(model.parameters(), lr=opt.lr, momentum=opt.momentum,weight_decay=opt.weight_decay)
+            if opt.dlr:
+                print("Double learning rate!")
+                self._optimizer = optim.SGD([{'params': [param for name, param in model.named_parameters() if (('lstm_pose_lr' not in name) and ('lstm_pose_ud' not in name))]}, {'params': model.lstm_pose_lr.parameters(), 'lr': opt.dlr},{'params': model.lstm_pose_ud.parameters(), 'lr': opt.dlr}], lr=opt.lr, momentum=opt.momentum,weight_decay=opt.weight_decay)
         else:
             self._optimizer = optim.Adam(model.parameters(), lr=opt.lr, eps=1, betas=(0.9, 0.999),weight_decay=opt.weight_decay)
         self._train_loader = self._data_loader.get_train_loader()

@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from options import Options
-from models import Net_2FC, Net_LSTM, Net_1FC, LeNet, LeNet_LSTM, Net_RNN, LeNet_plus, Net_LSTM2
+from models import Net_2FC,Net_3FC, Net_LSTM, Net_1FC, LeNet, LeNet_LSTM, Net_RNN, LeNet_plus, Net_LSTM2, Net_3FC, Net_LSTM25
 from data import CustomDatasetDataLoader
 from solver import Solver
 import numpy as np
@@ -44,15 +44,18 @@ def train_test(opt,visualizer,data_loader):
     if opt.model=="2fc":
         model = Net_2FC(opt)
         print("Two layer model created")
-    elif opt.model=="lstm":
-        model = Net_LSTM(opt)
-        print("LSTM model created")
-    elif opt.model=="1fc":
+    elif opt.model == "1fc":
         model = Net_1FC(opt)
         print("One layer model created")
+    elif opt.model == "3fc":
+        model = Net_3FC(opt)
+        print("Three layer model created")
+    elif opt.model == "lstm":
+        model = Net_LSTM(opt)
+        print("LSTM model created")
     elif opt.model=="lstm2":
         model = Net_LSTM2(opt)
-        print("One layer model created")
+        print("LSTM2 model created")
     elif opt.model == "rnn":
         model = Net_RNN(opt)
         print("RNN model created")
@@ -65,6 +68,9 @@ def train_test(opt,visualizer,data_loader):
     elif opt.model == "lenet+":
         model = LeNet_plus(opt)
         print("Lenet model+ created")
+    elif opt.model == "lstm25":
+        model = Net_LSTM25(opt)
+        print("LSTM25 created")
     else:
         raise ValueError("Model [%s] not recognized." % opt.model)
 
@@ -79,6 +85,7 @@ def train_test(opt,visualizer,data_loader):
     best_acc = 0
     visualizer.set_filename(opt)
     visualizer.write_options()
+    visualizer.model_str=str(model)
     visualizer.write_network_structure()
     pytorch_total_params = sum(p.numel() for p in model.parameters())
     visualizer.write_text("Total Network parameters: " + str(pytorch_total_params))
