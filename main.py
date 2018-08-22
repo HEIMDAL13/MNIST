@@ -19,6 +19,7 @@ import time
 from torchvision import datasets
 from tensorboardX import SummaryWriter
 from collections import defaultdict
+import csv
 
 acumulated_lstm = 0
 gradient_lstm_lr = 0
@@ -220,7 +221,13 @@ def train_test(opt,visualizer,data_loader):
     acc_best, loss_best = solver.test()
     visualizer.write_time()
     visualizer.flush_to_file()
-
+    if opt.plot_grad==3:
+        keys = sorted(grads.keys())
+        with open("sgradients_"+opt.name+"s"+str(opt.seed)+".csv", 'w') as resultFile:
+            wr = csv.writer(resultFile, dialect='excel')
+            #wr.writerows([['apple','cherry','orange','pineapple','strawberry']])
+            wr.writerow(keys)
+            wr.writerows(zip(*[grads[key] for key in keys]))
     return train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch
 
 def average(opt,visualizer,data_loader):
