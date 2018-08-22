@@ -42,6 +42,9 @@ class Options():
         self.parser.add_argument('--batch_norm3', type=int, default=0, help='batch normalization after third layer of fully conected')
         self.parser.add_argument('--input_size', type=int, default=784, help='input size of the first layer')
         self.parser.add_argument('--lstm_layers', type=int, default=1, help='lstm_layers')
+        self.parser.add_argument('--full_output', type=int, default=0, help='us full output instead last hidden in mo')
+        self.parser.add_argument('--vgg_model', type=str, default='VGG11', help='vgg model')
+
 
         self.parser.add_argument('--gpu', type=int, default=0, help='gpu id')
         self.parser.add_argument('--nThreads', default=1, type=int, help='# threads for loading data')
