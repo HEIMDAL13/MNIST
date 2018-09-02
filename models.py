@@ -365,6 +365,53 @@ class LeNet_LSTM(nn.Module):
 
         return F.log_softmax(x, dim=1)
 
+
+
+class LeNet_LSTM_first(nn.Module):
+    def __init__(self,opt):
+        super(LeNet_LSTM_first, self).__init__()
+        self.conv1 = nn.Conv2d(1, 20, kernel_size=5)
+        self.conv2 = nn.Conv2d(20, 40, kernel_size=3)
+        self.conv2_drop = nn.Dropout2d(p=opt.drop1)
+        self.conv3 = nn.Conv2d(40, 1, kernel_size=1)
+        self.fc1 = nn.Sequential(nn.Linear(1000, opt.first_size), nn.ReLU(), nn.Dropout(p=opt.drop2))
+        self.fc3 = nn.Linear(opt.n_hidden*4, 10)
+        self.opt = opt
+        self.n_hidden = opt.n_hidden
+        self.dropout_lstm = nn.Dropout(p=opt.drop3)
+
+
+        self.lstm_pose_lr = nn.LSTM(input_size=22, hidden_size=self.n_hidden, bidirectional=True, num_layers=opt.lstm_layers)
+        self.lstm_pose_ud = nn.LSTM(input_size=22, hidden_size=self.n_hidden, bidirectional=True, num_layers=opt.lstm_layers)
+
+    def init_hidden_(self, batch_size, device):
+        '''Return initialized hidden states and cell states for each biodirectional lstm cell'''
+        return (torch.randn(self.opt.lstm_layers*2, batch_size, self.n_hidden).to(device),
+                torch.randn(self.opt.lstm_layers*2, batch_size, self.n_hidden).to(device))
+
+    def forward(self, x):
+
+        batch_size = x.size()[0]
+
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2_drop(self.conv2(x)))
+        x = F.relu(self.conv3(x))
+        input_lstm = np.squeeze(x)
+        hidden_rightleft = self.init_hidden_(batch_size, x.device)
+        hidden_downup = self.init_hidden_(batch_size, x.device)
+        x_rightleft = input_lstm.permute(1, 0, 2)
+        x_downup = input_lstm.permute(2, 0, 1)
+        outputlr, (hidden_state_lr, cell_state_lr) = self.lstm_pose_lr(x_rightleft, hidden_rightleft)
+        outputud, (hidden_state_ud, cell_state_ud) = self.lstm_pose_ud(x_downup, hidden_downup)
+        final_output_lstm = torch.cat(
+            (
+            hidden_state_lr[0, :, :], hidden_state_lr[1, :, :], hidden_state_ud[0, :, :], hidden_state_ud[1, :, :]),
+            1)
+        x = self.dropout_lstm(final_output_lstm)
+        x = self.fc3(x)
+
+        return F.log_softmax(x, dim=1)
+
 class LeNet_plus(nn.Module):
     def __init__(self, opt):
         super(LeNet_plus, self).__init__()
@@ -746,4 +793,34 @@ class LeNet_LSTM_directconv(nn.Module):
         x = self.dropout_lstm(final_output_lstm)
         x = self.fc3(x)
 
+        return F.log_softmax(x, dim=1)
+
+class LSTM_first(nn.Module):
+    def __init__(self,opt):
+        super(LSTM_first, self).__init__()
+        self.n_hidden = opt.n_hidden
+        self.opt = opt
+        self.lstm_pose_lr = nn.LSTM(input_size=28, hidden_size=self.n_hidden, bidirectional=True)
+        self.lstm_pose_ud = nn.LSTM(input_size=28, hidden_size=self.n_hidden, bidirectional=True)
+        self.fc3 = nn.Linear(opt.n_hidden*4, 10)
+
+    def init_hidden_(self, batch_size, device):
+        '''Return initialized hidden states and cell states for each biodirectional lstm cell'''
+        return (torch.randn(2, batch_size, self.n_hidden).to(device),
+                torch.randn(2, batch_size, self.n_hidden).to(device))
+
+
+    def forward(self, x):
+        batch_size = x.size()[0]
+        x = np.squeeze(x)
+        hidden_rightleft = self.init_hidden_(batch_size, x.device)
+        hidden_downup = self.init_hidden_(batch_size, x.device)
+
+        x_rightleft = x.permute(1, 0, 2)
+        x_downup = x.permute(2, 0, 1)
+        outputlr, (hidden_state_lr, cell_state_lr) = self.lstm_pose_lr(x_rightleft, hidden_rightleft)
+        outputud, (hidden_state_ud, cell_state_ud) = self.lstm_pose_ud(x_downup, hidden_downup)
+        output_lstm = torch.cat(
+        (hidden_state_lr[0, :, :], hidden_state_lr[1, :, :], hidden_state_ud[0, :, :], hidden_state_ud[1, :, :]), 1)
+        x = self.fc3(output_lstm)
         return F.log_softmax(x, dim=1)

@@ -7,9 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from options import Options
-from models import Net_2FC,Net_3FC, Net_LSTM, Net_1FC, LeNet, LeNet_LSTM, Net_RNN, LeNet_plus, Net_LSTM2, Net_3FC, Net_LSTM25, LeNet_plus_LSTM, LeNet_plus_RNN, LeNet_RNN, LeNet_GRU
-from models import LeNet_LSTM_exp, LeNet_LSTM_mo, LeNet_LSTM_directconv, Net_LSTM_cell
-import models
+from models import *
 from vgg import VGG, VGG_LSTM
 from data import CustomDatasetDataLoader
 from solver import Solver
@@ -20,24 +18,11 @@ from torchvision import datasets
 from tensorboardX import SummaryWriter
 from collections import defaultdict
 import csv
-
-acumulated_lstm = 0
-gradient_lstm_lr = 0
-gradient_lstm_ud = 0
-gradient_gru_lr = 0
-gradient_gru_ud = 0
-gradient_fc1 = 0
-gradient_fc2 = 0
-gradient_fc3 = 0
-global_str = ""
 grads = defaultdict(list)
-fileg = open("gradients.txt", "w")
 
 def main():
-    global fileg
     opt = Options().parse()
     visualizer = Visualizer(opt)
-
     torch.manual_seed(opt.seed)
     torch.manual_seed(opt.seed)
     np.random.seed(opt.seed)
@@ -54,10 +39,9 @@ def main():
 
 
 def train_test(opt,visualizer,data_loader):
-    global global_str
-    global fileg
-    fileg.close()
-    fileg = open("gradients_"+opt.name+"s"+str(opt.seed)+".txt", "w")
+    torch.manual_seed(opt.seed)
+    torch.manual_seed(opt.seed)
+    np.random.seed(opt.seed)
     if opt.plot_grad==1:
         writer = SummaryWriter()
 
@@ -120,6 +104,12 @@ def train_test(opt,visualizer,data_loader):
     elif opt.model == "lstmcell":
         model = Net_LSTM_cell(opt)
         print("LSTM Cell")
+    elif opt.model == "lstmfirst":
+        model = LSTM_first(opt)
+        print("LSTM first")
+    elif opt.model == "lenetlstmfirst":
+        model = LeNet_LSTM_first(opt)
+        print("LeNet LSTM first")
     else:
         raise ValueError("Model [%s] not recognized." % opt.model)
 
@@ -129,36 +119,9 @@ def train_test(opt,visualizer,data_loader):
         print("GPU: ",torch.cuda.current_device())
 
     if opt.plot_grad==2:
-        if opt.model == "lstm":
-            model.fc1.register_backward_hook(printgradnorm_fc1_e)
-            model.lstm_pose_lr.register_backward_hook(printgradnorm_lstm_lr)
-            model.lstm_pose_ud.register_backward_hook(printgradnorm_lstm_ud)
-            model.fc3.register_backward_hook(printgradnorm_fc3)
-
-        elif opt.model == "2fc":
-            model.fc1.register_backward_hook(printgradnorm_fc1_e)
-            model.fc2.register_backward_hook(printgradnorm_fc2)
-            model.fc3.register_backward_hook(printgradnorm_fc3)
-        elif opt.model == "lenetlstm":
-            model.conv1.register_backward_hook(printgradnorm_conv1)
-            model.conv2.register_backward_hook(printgradnorm_conv2)
-            model.fc1.register_backward_hook(printgradnorm_fc1)
-            model.lstm_pose_lr.register_backward_hook(printgradnorm_lstm_lr)
-            model.lstm_pose_ud.register_backward_hook(printgradnorm_lstm_ud)
-            model.fc3.register_backward_hook(printgradnorm_fc3)
-        elif opt.model == "lenetgru":
-            model.conv1.register_backward_hook(printgradnorm_conv1)
-            model.conv2.register_backward_hook(printgradnorm_conv2)
-            model.fc1.register_backward_hook(printgradnorm_fc1)
-            model.gru_pose_lr.register_backward_hook(printgradnorm_gru_lr)
-            model.gru_pose_ud.register_backward_hook(printgradnorm_gru_ud)
-            model.fc3.register_backward_hook(printgradnorm_fc3)
-        elif opt.model == "lenet":
-            model.conv1.register_backward_hook(printgradnorm_conv1)
-            model.conv2.register_backward_hook(printgradnorm_conv2)
-            model.fc1.register_backward_hook(printgradnorm_fc1)
-            model.fc2.register_backward_hook(printgradnorm_fc2)
-            model.fc3.register_backward_hook(printgradnorm_fc3)
+        for m_name, module in model.named_modules():
+            print("MODULE NAME: " + m_name)
+            module.register_backward_hook(save_grad_global(m_name))
 
     if opt.plot_grad==3:
         for m_name, module in model.named_modules():
@@ -183,9 +146,6 @@ def train_test(opt,visualizer,data_loader):
     val_losses=[]
 
     for epoch in range(1, opt.epochs + 1):
-        fileg.write(global_str)
-        fileg.write("\n EPOCH: " + str(epoch)+ "\n")
-        global_str = ""
         start_epoch_time = time.time()
         train_loss,train_acc = solver.train(epoch)
         print("Accuracy TRAINING: ",train_acc)
@@ -221,13 +181,56 @@ def train_test(opt,visualizer,data_loader):
     acc_best, loss_best = solver.test()
     visualizer.write_time()
     visualizer.flush_to_file()
-    if opt.plot_grad==3:
+
+    if opt.plot_grad>1:
         keys = sorted(grads.keys())
-        with open("sgradients_"+opt.name+"s"+str(opt.seed)+".csv", 'w') as resultFile:
+        with open("./results/sgradients_"+opt.name+"s"+str(opt.seed)+".csv", 'w') as resultFile:
             wr = csv.writer(resultFile, dialect='excel')
-            #wr.writerows([['apple','cherry','orange','pineapple','strawberry']])
             wr.writerow(keys)
             wr.writerows(zip(*[grads[key] for key in keys]))
+        if opt.plot_grad > 2:
+            final_grads = {}
+            weight_i = 0
+            weight_o = 0
+            weight_f = 0
+            weight_g = 0
+            for key, value in grads.items():
+                if (('lstm' in key) and ("weight" in key) and (("e_i" in key) or ("0_i" in key))):
+                    if weight_i == 0:
+                        grads_i = value
+                    else:
+                        grads_i = np.sqrt(np.square(grads_i) + np.square(value))
+                elif (('lstm' in key) and ("weight" in key) and ("_o" in key)):
+                    if weight_o == 0:
+                        grads_o = value
+                    else:
+                        grads_o = np.sqrt(np.square(grads_o) + np.square(value))
+                elif (('lstm' in key) and ("weight" in key) and ("_f" in key)):
+                    if weight_f == 0:
+                        grads_f = value
+                    else:
+                        grads_f = np.sqrt(np.square(grads_f) + value * value)
+                elif (('lstm' in key) and ("weight" in key) and ("_g" in key)):
+                    if weight_g == 0:
+                        grads_g = value
+                    else:
+                        grads_g = np.sqrt(np.square(grads_g) + np.square(value))
+                elif (('lstm' not in key) and ("weight" in key)):
+                    final_grads[key] = value
+            if "lstm" in opt.model:
+                final_grads["lstm input gate"] = grads_i
+                final_grads["lstm output gate"] = grads_o
+                final_grads["lstm forget gate"] = grads_f
+                final_grads["lstm activation"] = grads_g
+            keys = sorted(final_grads.keys())
+
+            with open("./results/sglite_"+opt.name+"s"+str(opt.seed)+".csv", 'w') as resultFile:
+                wr = csv.writer(resultFile, dialect='excel')
+                wr.writerow(keys)
+                wr.writerows(zip(*[final_grads[key] for key in keys]))
+            if opt.display_id >= 1:
+                visualizer.plot_grads(final_grads)
+        grads.clear()
     return train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch
 
 def average(opt,visualizer,data_loader):
@@ -295,110 +298,19 @@ def load_net(net,filename):
     save_path = './results/'
     net.load_state_dict(torch.load(save_path + save_filename))
 
+def save_grad_global(name):
+    def hook(self, grad_input, grad_output):
+        if "lstm_" in name:
+            gradient_lstm = grad_output[1].norm().item()
+            grads[name].append(gradient_lstm)
+        else:
+            gradient = grad_output[0].norm().item()
+            grads[name].append(gradient)
+    return hook
 
-def printnorm(self, input, output):
-    # input is a tuple of packed inputs
-    # output is a Tensor. output.data is the Tensor we are interested
-    print('Inside ' + self.__class__.__name__ + ' forward')
-    print('')
-    print('input: ', type(input))
-    print('input[0]: ', type(input[0]))
-    print('output: ', type(output))
-    print('')
-    print('input size:', input[0].size())
-    print('output size:', output.data.size())
-    print('output norm:', output.data.norm())
-
-def printgradnorm_lstm_lr(self, grad_input, grad_output):
-    global gradient_lstm_lr
-    global fileg
-    global global_str
-    print('Inside class:' + self.__class__.__name__)
-    print('grad_output LSTM:', grad_output[1].norm())
-    gradient_lstm_lr = grad_output[1].norm().item()
-    acumulated_lstm = np.sqrt(gradient_lstm_lr*gradient_lstm_lr +gradient_lstm_ud*gradient_lstm_ud)
-    print("Acumulated lstm: ", acumulated_lstm)
-    global_str += "(" + str(acumulated_lstm)+ ") LSTM -> "
-    print("GLOBAL STR: " + global_str)
-    print("2")
-
-
-def printgradnorm_lstm_ud(self, grad_input, grad_output):
-    global gradient_lstm_ud
-    print('Inside class:' + self.__class__.__name__)
-    print('grad_output LSTM:', grad_output[1].norm())
-    gradient_lstm_ud = grad_output[1].norm().item()
-    print("1")
-
-
-def printgradnorm_gru_lr(self, grad_input, grad_output):
-    global gradient_gru_lr
-    global fileg
-    global global_str
-    print('Inside class:' + self.__class__.__name__)
-    print('grad_output LSTM:', grad_output[1].norm())
-    gradient_gru_lr = grad_output[1].norm().item()
-    acumulated_lstm = np.sqrt(gradient_gru_lr*gradient_gru_lr + gradient_gru_ud*gradient_gru_ud)
-    print("Acumulated lstm: ", acumulated_lstm)
-    global_str += "(" + str(acumulated_lstm)+ ") GRU -> "
-    print("GLOBAL STR: " + global_str)
-    print("2")
-
-
-def printgradnorm_gru_ud(self, grad_input, grad_output):
-    global gradient_gru_ud
-    print('Inside class:' + self.__class__.__name__)
-    print('grad_output LSTM:', grad_output[1].norm())
-    gradient_gru_ud = grad_output[1].norm().item()
-    print("1")
-
-def printgradnorm_fc1_e(self, grad_input, grad_output):
-    global global_str
-    print('Inside class:' + self.__class__.__name__)
-    gradient_fc1 = grad_output[0].norm().item()
-    print('grad_output fc1:', grad_output[0].norm())
-    global_str += "(" + str(gradient_fc1)+ ") FC1 \n"
-
-
-
-def printgradnorm_fc1(self, grad_input, grad_output):
-    global global_str
-    print('Inside class:' + self.__class__.__name__)
-    gradient_fc1 = grad_output[0].norm().item()
-    print('grad_output fc1:', grad_output[0].norm())
-    global_str += "(" + str(gradient_fc1)+ ") FC1 ->"
-
-def printgradnorm_fc2(self, grad_input, grad_output):
-    global global_str
-    print('Inside class:' + self.__class__.__name__)
-    gradient_fc2 = grad_output[0].norm().item()
-    print('grad_output fc2:', grad_output[0].norm())
-    global_str += "(" + str(gradient_fc2)+ ") FC2 ->"
-
-def printgradnorm_fc3(self, grad_input, grad_output):
-    global global_str
-    print('Inside class:' + self.__class__.__name__)
-    gradient_fc3 = grad_output[0].norm().item()
-    print('grad_output fc3:', gradient_fc3)
-    global_str += "(" + str(gradient_fc3)+ ") FC3 ->"
-
-def printgradnorm_conv1(self, grad_input, grad_output):
-    global global_str
-    print('Inside class:' + self.__class__.__name__)
-    gradient_conv1 = grad_output[0].norm().item()
-    print('grad_output fc3:', gradient_conv1)
-    global_str += "(" + str(gradient_conv1)+ ") conv1\n"
-
-def printgradnorm_conv2(self, grad_input, grad_output):
-    global global_str
-    print('Inside class:' + self.__class__.__name__)
-    gradient_conv2 = grad_output[0].norm().item()
-    print('grad_output fc3:', gradient_conv2)
-    global_str += "(" + str(gradient_conv2)+ ") conv2 ->"
 
 def save_grad(name):
     def hook(grad):
-        print(name)
         if "lstm" in name:
             grad_i = grad[0:256].data.norm().item()
             grads[name+"_i"].append(grad_i)

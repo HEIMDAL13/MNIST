@@ -28,7 +28,7 @@ class Visualizer():
         if not os.path.exists("results"):
             os.makedirs("results")
         if opt.vis_env == "default":
-            self.env = str(opt.momentum)+'_'+str(opt.batch_norm1)+'_'+opt.model+'_drop'+str(0!=opt.drop2)+'_'+ str(opt.train_size)
+            self.env = opt.model+"_sz_"+str(opt.train_size)
         else:
             self.env = opt.vis_env
         print("SELF ENV: ",self.env)
@@ -111,6 +111,22 @@ class Visualizer():
                 'ylabel': 'loss'},
             win=self.display_id,env=self.env)
 
+    def plot_grads(self,grads):
+        self.plot_data_grad = {'X': [], 'Y': [], 'legend': []}
+        keys = []
+        values = []
+        for key, value in grads.items():
+            values.append(value)
+            keys.append(key)
+        y = np.array(values).transpose()
+        x = np.arange(len(value))
+        self.vis.line(Y=y, X=x, opts={
+                'title': self.filename + ' id:' + str(self.display_id),
+                'legend': keys,
+                'xlabel': 'Iterations',
+                'ylabel': 'Gradient module'},
+            win=self.display_id, env=("grad_"+self.env))
+        self.vis.save([("grad_"+self.env)])
     def reset_plot(self):
         self.plot_data = {'X': [], 'Y': [], 'legend': ["train_loss", "val_loss","train_acc","val_acc"]}
         self.display_id+=1
