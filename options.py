@@ -54,6 +54,8 @@ class Options():
         self.parser.add_argument('--display_id', type=int, default="0", help='Where to train the network, cuda or cpu')
         self.parser.add_argument('--display_port', type=int, default="8095", help='Where to train the network, cuda or cpu')
         self.parser.add_argument('--vis_env', type=str, default="default", help='Where to train the network, cuda or cpu')
+        self.parser.add_argument('--resdir', type=str, default="results", help='Result directory')
+
 
         self.initialized = True
 

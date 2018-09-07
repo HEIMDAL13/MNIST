@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from options import Options
-from models import *
+import models
 from vgg import VGG, VGG_LSTM
 from data import CustomDatasetDataLoader
 from solver import Solver
@@ -19,6 +19,8 @@ from tensorboardX import SummaryWriter
 from collections import defaultdict
 import csv
 grads = defaultdict(list)
+grads_m = defaultdict(list)
+
 
 def main():
     opt = Options().parse()
@@ -46,73 +48,8 @@ def train_test(opt,visualizer,data_loader):
         writer = SummaryWriter()
 
     visualizer.start_timmer()
-
-    if opt.model=="2fc":
-        model = Net_2FC(opt)
-        print("Two layer model created")
-    elif opt.model == "1fc":
-        model = Net_1FC(opt)
-        print("One layer model created")
-    elif opt.model == "3fc":
-        model = Net_3FC(opt)
-        print("Three layer model created")
-    elif opt.model == "lstm":
-        model = Net_LSTM(opt)
-        print("LSTM model created")
-    elif opt.model=="lstm2":
-        model = Net_LSTM2(opt)
-        print("LSTM2 model created")
-    elif opt.model == "rnn":
-        model = Net_RNN(opt)
-        print("RNN model created")
-    elif opt.model=="lenet":
-        model = LeNet(opt)
-        print("Lenet model created")
-    elif opt.model == "lenetlstm":
-        model = LeNet_LSTM(opt)
-        print("Lenet model+lstm created")
-    elif opt.model == "lenet+" or opt.model == "lenetplus":
-        model = LeNet_plus(opt)
-        print("Lenet model+ created")
-    elif opt.model == "lenet+lstm" or opt.model == "lenetpluslstm":
-        model = LeNet_plus_LSTM(opt)
-        print("Lenet model+LSTM created")
-    elif opt.model == "lenetrnn" or opt.model == "lenetrnn":
-        model = LeNet_RNN(opt)
-        print("Lenet RNN created")
-    elif opt.model == "lenetgru":
-        model = LeNet_GRU(opt)
-        print("Lenet GRU created")
-    elif opt.model == "lenetlstm_exp":
-        model = LeNet_LSTM_exp(opt)
-        print("Lenet LSTM_exp created")
-    elif opt.model == "lenetlstm_mo":
-        model = LeNet_LSTM_mo(opt)
-        print("Lenet LSTM_mo created")
-    elif opt.model == "lstm25":
-        model = Net_LSTM25(opt)
-        print("LSTM25 created")
-    elif opt.model == "directconv":
-        model = LeNet_LSTM_directconv(opt)
-        print("directconv")
-    elif opt.model == "vgg":
-        model = VGG(opt)
-        print("VGG")
-    elif opt.model == "vgglstm":
-        model = VGG_LSTM(opt)
-        print("VGG_LSTM")
-    elif opt.model == "lstmcell":
-        model = Net_LSTM_cell(opt)
-        print("LSTM Cell")
-    elif opt.model == "lstmfirst":
-        model = LSTM_first(opt)
-        print("LSTM first")
-    elif opt.model == "lenetlstmfirst":
-        model = LeNet_LSTM_first(opt)
-        print("LeNet LSTM first")
-    else:
-        raise ValueError("Model [%s] not recognized." % opt.model)
-
+    model_class = getattr(models,opt.model)
+    model = model_class(opt)
     model.to(opt.device)
     print("Training on: ", opt.device)
     if opt.device == "cuda":
@@ -131,7 +68,7 @@ def train_test(opt,visualizer,data_loader):
                     print("parameter name: "+p_name)
                     p.register_hook(save_grad(m_name+"-"+p_name))
 
-    save_net(model,visualizer.filename)
+    save_net(model,visualizer.filename,opt.resdir)
     best_epoch = 0
     solver = Solver(model, data_loader, opt,visualizer)
     best_acc = 0
@@ -156,12 +93,9 @@ def train_test(opt,visualizer,data_loader):
             visualizer.plot_current_errors(epoch, train_loss, val_loss,train_acc,val_acc)
         if best_acc<val_acc:
             best_acc=val_acc
-            save_net(model,visualizer.filename)
+            save_net(model,visualizer.filename,opt.resdir)
             best_epoch = epoch
-        #
-        # for name, param in model.named_parameters():
-        #    if 'bn' not in name:
-        #       writer.add_histogram(name, param, epoch,bins='doane')
+
         if opt.plot_grad==1:
             for name, param in filter(lambda np: np[1].grad is not None, model.named_parameters()):
                 writer.add_histogram(name, param.grad.data.cpu().numpy(),epoch,bins='doane')
@@ -177,60 +111,54 @@ def train_test(opt,visualizer,data_loader):
     acc_last, loss_last = solver.test()
     visualizer.write_text("Evaluation best model epoch " +str(best_epoch))
 
-    load_net(model,visualizer.filename)
+    load_net(model,visualizer.filename,opt.resdir)
     acc_best, loss_best = solver.test()
     visualizer.write_time()
     visualizer.flush_to_file()
 
     if opt.plot_grad>1:
         keys = sorted(grads.keys())
-        with open("./results/sgradients_"+opt.name+"s"+str(opt.seed)+".csv", 'w') as resultFile:
+        with open("./"+opt.resdir+"/sgradients_"+opt.name+"s"+str(opt.seed)+".csv", 'w') as resultFile:
             wr = csv.writer(resultFile, dialect='excel')
             wr.writerow(keys)
             wr.writerows(zip(*[grads[key] for key in keys]))
         if opt.plot_grad > 2:
             final_grads = {}
-            weight_i = 0
-            weight_o = 0
-            weight_f = 0
-            weight_g = 0
+            final_grads_m = {}
+            lstm_flag = 0
             for key, value in grads.items():
-                if (('lstm' in key) and ("weight" in key) and (("e_i" in key) or ("0_i" in key))):
-                    if weight_i == 0:
-                        grads_i = value
-                    else:
-                        grads_i = np.sqrt(np.square(grads_i) + np.square(value))
-                elif (('lstm' in key) and ("weight" in key) and ("_o" in key)):
-                    if weight_o == 0:
-                        grads_o = value
-                    else:
-                        grads_o = np.sqrt(np.square(grads_o) + np.square(value))
-                elif (('lstm' in key) and ("weight" in key) and ("_f" in key)):
-                    if weight_f == 0:
-                        grads_f = value
-                    else:
-                        grads_f = np.sqrt(np.square(grads_f) + value * value)
-                elif (('lstm' in key) and ("weight" in key) and ("_g" in key)):
-                    if weight_g == 0:
-                        grads_g = value
-                    else:
-                        grads_g = np.sqrt(np.square(grads_g) + np.square(value))
-                elif (('lstm' not in key) and ("weight" in key)):
+                if (('lstm' not in key) and ("weight" in key)):
                     final_grads[key] = value
-            if "lstm" in opt.model:
-                final_grads["lstm input gate"] = grads_i
-                final_grads["lstm output gate"] = grads_o
-                final_grads["lstm forget gate"] = grads_f
-                final_grads["lstm activation"] = grads_g
+                    final_grads_m[key] = grads_m[key]
+                elif "lstm" in key:
+                    lstm_flag = 1
+            if lstm_flag:
+                final_grads["lstm input gate"] = np.sqrt(np.square(grads["lstm_pose_lr-weight_hh_l0_i"])+np.square(grads["lstm_pose_lr-weight_ih_l0_i"])+np.square(grads["lstm_pose_lr-weight_hh_l0_reverse_i"])+np.square(grads["lstm_pose_lr-weight_ih_l0_reverse_i"])+np.square(grads["lstm_pose_ud-weight_hh_l0_i"])+np.square(grads["lstm_pose_ud-weight_ih_l0_i"])+np.square(grads["lstm_pose_ud-weight_hh_l0_reverse_i"])+np.square(grads["lstm_pose_ud-weight_ih_l0_reverse_i"]))
+                final_grads_m["lstm input gate"] = np.mean([grads_m["lstm_pose_lr-weight_hh_l0_i"], grads_m["lstm_pose_lr-weight_ih_l0_i"], grads_m["lstm_pose_lr-weight_hh_l0_reverse_i"], grads_m["lstm_pose_lr-weight_ih_l0_reverse_i"], grads_m["lstm_pose_ud-weight_hh_l0_i"], grads_m["lstm_pose_ud-weight_ih_l0_i"], grads_m["lstm_pose_ud-weight_hh_l0_reverse_i"], grads_m["lstm_pose_ud-weight_ih_l0_reverse_i"]],axis=0)
+                final_grads["lstm output gate"] = np.sqrt(np.square(grads["lstm_pose_lr-weight_hh_l0_o"])+np.square(grads["lstm_pose_lr-weight_ih_l0_o"])+np.square(grads["lstm_pose_lr-weight_hh_l0_reverse_o"])+np.square(grads["lstm_pose_lr-weight_ih_l0_reverse_o"])+np.square(grads["lstm_pose_ud-weight_hh_l0_o"])+np.square(grads["lstm_pose_ud-weight_ih_l0_o"])+np.square(grads["lstm_pose_ud-weight_hh_l0_reverse_o"])+np.square(grads["lstm_pose_ud-weight_ih_l0_reverse_o"]))
+                final_grads_m["lstm output gate"] = np.mean([grads_m["lstm_pose_lr-weight_hh_l0_o"], grads_m["lstm_pose_lr-weight_ih_l0_o"], grads_m["lstm_pose_lr-weight_hh_l0_reverse_o"], grads_m["lstm_pose_lr-weight_ih_l0_reverse_o"], grads_m["lstm_pose_ud-weight_hh_l0_o"], grads_m["lstm_pose_ud-weight_ih_l0_o"], grads_m["lstm_pose_ud-weight_hh_l0_reverse_o"], grads_m["lstm_pose_ud-weight_ih_l0_reverse_o"]],axis=0)
+                final_grads["lstm forget gate"] = np.sqrt(np.square(grads["lstm_pose_lr-weight_hh_l0_f"])+np.square(grads["lstm_pose_lr-weight_ih_l0_f"])+np.square(grads["lstm_pose_lr-weight_hh_l0_reverse_f"])+np.square(grads["lstm_pose_lr-weight_ih_l0_reverse_f"])+np.square(grads["lstm_pose_ud-weight_hh_l0_f"])+np.square(grads["lstm_pose_ud-weight_ih_l0_f"])+np.square(grads["lstm_pose_ud-weight_hh_l0_reverse_f"])+np.square(grads["lstm_pose_ud-weight_ih_l0_reverse_f"]))
+                final_grads_m["lstm forget gate"] = np.mean([grads_m["lstm_pose_lr-weight_hh_l0_f"], grads_m["lstm_pose_lr-weight_ih_l0_f"], grads_m["lstm_pose_lr-weight_hh_l0_reverse_f"], grads_m["lstm_pose_lr-weight_ih_l0_reverse_f"], grads_m["lstm_pose_ud-weight_hh_l0_f"], grads_m["lstm_pose_ud-weight_ih_l0_f"], grads_m["lstm_pose_ud-weight_hh_l0_reverse_f"], grads_m["lstm_pose_ud-weight_ih_l0_reverse_f"]],axis=0)
+                final_grads["lstm activation"] = np.sqrt(np.square(grads["lstm_pose_lr-weight_hh_l0_g"])+np.square(grads["lstm_pose_lr-weight_ih_l0_g"])+np.square(grads["lstm_pose_lr-weight_hh_l0_reverse_g"])+np.square(grads["lstm_pose_lr-weight_ih_l0_reverse_g"])+np.square(grads["lstm_pose_ud-weight_hh_l0_g"])+np.square(grads["lstm_pose_ud-weight_ih_l0_g"])+np.square(grads["lstm_pose_ud-weight_hh_l0_reverse_g"])+np.square(grads["lstm_pose_ud-weight_ih_l0_reverse_g"]))
+                final_grads_m["lstm activation"] = np.mean([grads_m["lstm_pose_lr-weight_hh_l0_g"], grads_m["lstm_pose_lr-weight_ih_l0_g"], grads_m["lstm_pose_lr-weight_hh_l0_reverse_g"], grads_m["lstm_pose_lr-weight_ih_l0_reverse_g"], grads_m["lstm_pose_ud-weight_hh_l0_g"], grads_m["lstm_pose_ud-weight_ih_l0_g"], grads_m["lstm_pose_ud-weight_hh_l0_reverse_g"], grads_m["lstm_pose_ud-weight_ih_l0_reverse_g"]],axis=0)
             keys = sorted(final_grads.keys())
-
-            with open("./results/sglite_"+opt.name+"s"+str(opt.seed)+".csv", 'w') as resultFile:
+            with open("./"+opt.resdir+"/sglite_"+opt.name+"s"+str(opt.seed)+".csv", 'w') as resultFile:
                 wr = csv.writer(resultFile, dialect='excel')
                 wr.writerow(keys)
                 wr.writerows(zip(*[final_grads[key] for key in keys]))
+            keys = sorted(final_grads_m.keys())
+            with open("./"+opt.resdir+"/smglite_"+opt.name+"s"+str(opt.seed)+".csv", 'w') as resultFile:
+                wr = csv.writer(resultFile, dialect='excel')
+                wr.writerow(keys)
+                wr.writerows(zip(*[final_grads_m[key] for key in keys]))
+
             if opt.display_id >= 1:
                 visualizer.plot_grads(final_grads)
+                visualizer.plot_grads_m(final_grads_m)
+
         grads.clear()
+        grads_m.clear()
+
     return train_losses, val_losses, acc_best, acc_last, loss_best, loss_last, best_epoch
 
 def average(opt,visualizer,data_loader):
@@ -288,14 +216,14 @@ def average(opt,visualizer,data_loader):
     visualizer.flush_to_file()
     return acc_last_m
 
-def save_net(net,filename):
+def save_net(net,filename,resdir):
     save_filename = 'net_'+filename+'.pth'
-    save_path = './results/'
+    save_path = './'+resdir+'/'
     torch.save(net.state_dict(), save_path + save_filename)
 
-def load_net(net,filename):
+def load_net(net,filename,resdir):
     save_filename = 'net_'+filename+'.pth'
-    save_path = './results/'
+    save_path = './'+resdir+'/'
     net.load_state_dict(torch.load(save_path + save_filename))
 
 def save_grad_global(name):
@@ -312,16 +240,27 @@ def save_grad_global(name):
 def save_grad(name):
     def hook(grad):
         if "lstm" in name:
-            grad_i = grad[0:256].data.norm().item()
+            hidden_size = int(grad.shape[0]/4)
+            grad_i = grad[0:hidden_size].data.norm().item()
+            grad_i_m = grad[0:hidden_size].data.abs().mean().item()
             grads[name+"_i"].append(grad_i)
-            grad_f = grad[256:512].data.norm().item()
+            grads_m[name+"_i"].append(grad_i_m)
+            grad_f = grad[hidden_size:hidden_size*2].data.norm().item()
+            grad_f_m = grad[hidden_size:hidden_size*2].data.abs().mean().item()
             grads[name + "_f"].append(grad_f)
-            grad_g = grad[512:768].data.norm().item()
+            grads_m[name + "_f"].append(grad_f_m)
+            grad_g = grad[hidden_size*2:hidden_size*3].data.norm().item()
+            grad_g_m = grad[hidden_size*2:hidden_size*3].data.abs().mean().item()
             grads[name + "_g"].append(grad_g)
-            grad_o = grad[768:1024].data.norm().item()
+            grads_m[name + "_g"].append(grad_g_m)
+            grad_o = grad[hidden_size*3:hidden_size*4].data.norm().item()
+            grad_o_m = grad[hidden_size*3:hidden_size*4].data.abs().mean().item()
             grads[name + "_o"].append(grad_o)
+            grads_m[name + "_o"].append(grad_o_m)
+
         else:
             grads[name].append(grad.data.norm().item())
+            grads_m[name].append(grad.data.abs().mean().item())
     return hook
 
 

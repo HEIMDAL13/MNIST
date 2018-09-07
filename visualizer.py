@@ -25,10 +25,10 @@ class Visualizer():
         if self.display_id > 0:
             import visdom
             self.vis = visdom.Visdom(port=opt.display_port)
-        if not os.path.exists("results"):
-            os.makedirs("results")
+        if not os.path.exists(opt.resdir):
+            os.makedirs(opt.resdir)
         if opt.vis_env == "default":
-            self.env = opt.model+"_sz_"+str(opt.train_size)
+            self.env = opt.name
         else:
             self.env = opt.vis_env
         print("SELF ENV: ",self.env)
@@ -65,11 +65,11 @@ class Visualizer():
         plt.plot(np.arange(1,len(train)+1),train,np.arange(1,len(val)+1),val)
         plt.ylabel('loss')
         plt.title('train/test loss')
-        plt.savefig('./results/plot_' + self.filename + '.jpg')
+        plt.savefig('./'+self.opt.resdir+'/plot_' + self.filename + '.jpg')
         plt.close()
 
     def flush_to_file(self):
-        file = open("./results/"+self.filename+".txt", "w")
+        file = open("./"+self.opt.resdir+"/"+self.filename+".txt", "w")
         file.write(self.text)
         self.text=""
         file.close()
@@ -127,6 +127,25 @@ class Visualizer():
                 'ylabel': 'Gradient module'},
             win=self.display_id, env=("grad_"+self.env))
         self.vis.save([("grad_"+self.env)])
+
+    def plot_grads_m(self,grads):
+        self.plot_data_grad = {'X': [], 'Y': [], 'legend': []}
+        keys = []
+        values = []
+        for key, value in grads.items():
+            values.append(value)
+            keys.append(key)
+        y = np.array(values).transpose()
+        x = np.arange(len(value))
+        self.vis.line(Y=y, X=x, opts={
+                'title': self.filename + ' id:' + str(self.display_id),
+                'legend': keys,
+                'xlabel': 'Iterations',
+                'ylabel': 'Gradient module'},
+            win=self.display_id, env=("mgrad_"+self.env))
+        self.vis.save([("mgrad_"+self.env)])
+
+
     def reset_plot(self):
         self.plot_data = {'X': [], 'Y': [], 'legend': ["train_loss", "val_loss","train_acc","val_acc"]}
         self.display_id+=1
