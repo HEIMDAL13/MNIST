@@ -45,7 +45,9 @@ def train_test(opt,visualizer,data_loader):
     torch.manual_seed(opt.seed)
     np.random.seed(opt.seed)
     if opt.plot_grad==1:
-        writer = SummaryWriter()
+        writer = SummaryWriter('runs/grad_'+opt.name+str(opt.seed))
+        writer2 = SummaryWriter('runs/weight_'+opt.name+str(opt.seed))
+
 
     visualizer.start_timmer()
     model_class = getattr(models,opt.model)
@@ -97,15 +99,15 @@ def train_test(opt,visualizer,data_loader):
             best_epoch = epoch
 
         if opt.plot_grad==1:
+            for name, param in model.named_parameters():
+                if 'bn' not in name:
+                    writer2.add_histogram(name, param, epoch,bins='doane')
             for name, param in filter(lambda np: np[1].grad is not None, model.named_parameters()):
                 writer.add_histogram(name, param.grad.data.cpu().numpy(),epoch,bins='doane')
-
-        params = list(model.parameters())
 
         end_epoch_time = time.time()
         epoch_time = end_epoch_time-start_epoch_time
         print("Epoch time: ",epoch_time)
-
 
     visualizer.write_text("Evaluation last model:")
     acc_last, loss_last = solver.test()
@@ -151,8 +153,15 @@ def train_test(opt,visualizer,data_loader):
                 wr = csv.writer(resultFile, dialect='excel')
                 wr.writerow(keys)
                 wr.writerows(zip(*[final_grads_m[key] for key in keys]))
-
+            if "LSTM_cell" in opt.model:
+                dict_print = model.lstm_pose_l.gate_outputs
+                keys = sorted(dict_print.keys())
+                with open("./" + opt.resdir + "/gates_out_" + opt.name + "s" + str(opt.seed) + ".csv", 'w') as resultFile:
+                    wr = csv.writer(resultFile, dialect='excel')
+                    wr.writerow(keys)
+                    wr.writerows(zip(*[dict_print[key] for key in keys]))
             if opt.display_id >= 1:
+                visualizer.vis.save([opt.name])
                 visualizer.plot_grads(final_grads)
                 visualizer.plot_grads_m(final_grads_m)
 

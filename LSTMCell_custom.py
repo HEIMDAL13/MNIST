@@ -4,6 +4,11 @@ import torch
 from torch.nn.parameter import Parameter
 from torch.nn import functional as F
 from torch.nn._functions.thnn import rnnFusedPointwise as fusedBackend
+
+
+from collections import defaultdict
+import csv
+
 class LSTMCell_custom(RNNCellBase):
     r"""A long short-term memory (LSTM) cell.
 
@@ -52,6 +57,7 @@ class LSTMCell_custom(RNNCellBase):
 
     def __init__(self, input_size, hidden_size, bias=True, print=False):
         super(LSTMCell_custom, self).__init__()
+        self.gate_outputs = defaultdict(list)
         self.print = print
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -92,10 +98,14 @@ class LSTMCell_custom(RNNCellBase):
         cellgate = F.tanh(cellgate)
         outgate = F.sigmoid(outgate)
         if self.print == True and self.training == True:
-            print("Input gate: "+str(ingate.data.abs().mean().item()))
-            print("Forget gate: "+str(forgetgate.abs().data.mean().item()))
-            print("Cell gate: "+str(cellgate.data.abs().mean().item()))
-            print("Output gate: "+str(outgate.data.abs().mean().item()))
+            print("Input gate: "+str(ingate.data.norm().item()))
+            print("Forget gate: "+str(forgetgate.data.norm().item()))
+            print("Cell gate: "+str(cellgate.data.norm().item()))
+            print("Output gate: "+str(outgate.data.norm().item()))
+            self.gate_outputs["lstm input gate"].append(ingate.data.norm().item())
+            self.gate_outputs["lstm forget gate"].append(forgetgate.data.norm().item())
+            self.gate_outputs["lstm output gate"].append(outgate.data.norm().item())
+            self.gate_outputs["lstm activation"].append(cellgate.data.norm().item())
         cy = (forgetgate * cx) + (ingate * cellgate)
         hy = outgate * F.tanh(cy)
 

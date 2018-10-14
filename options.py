@@ -25,6 +25,7 @@ class Options():
         self.parser.add_argument('--train_size', type=int, default=500,help='Train datazet size')
 
         self.parser.add_argument('--dataset', type=str, default='mnist', help='Dataset to be used (mnist, cifar10)')
+        self.parser.add_argument('--greyscale', type=int, default=0, help='Flag to set database to greyscale')
         self.parser.add_argument('--model', type=str, default='2fc', help='Model to be used (2fc, lstm, 1fc)')
 
         self.parser.add_argument('--first_size', type=int, default=2048, help='size first fc layer')
@@ -64,5 +65,8 @@ class Options():
             self.initialize()
         self.opt = self.parser.parse_args()
         if self.opt.dataset == "cifar10":
-            self.opt.input_size = 3072
+            if self.opt.greyscale:
+                self.opt.input_size = 1024
+            else:
+                self.opt.input_size = 3072
         return self.opt

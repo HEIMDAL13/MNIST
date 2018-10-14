@@ -22,9 +22,14 @@ class CustomDatasetDataLoader():
                 ]))
         elif opt.dataset == "cifar10":
             print("Cifar10 dataset laoded!")
-            transform = transforms.Compose(
-                [transforms.ToTensor(),
-                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            if opt.greyscale:
+                transform = transforms.Compose(
+                    [transforms.Grayscale(),transforms.ToTensor(),
+                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            else:
+                transform = transforms.Compose(
+                    [transforms.ToTensor(),
+                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
             self.train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
 
